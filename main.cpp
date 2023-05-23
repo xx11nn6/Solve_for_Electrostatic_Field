@@ -2,6 +2,9 @@
 #include <malloc.h>
 #include <numeric>
 #include <iomanip>
+#include <graphics.h>		// 引用 EasyX 图形库
+#include <conio.h>
+
 using namespace std;
 
 struct Grid_Array  //定义电场网格结构
@@ -26,6 +29,12 @@ double SOR(Grid_Array** grid, double omega);
 double select_accelerator_factor(Grid_Array** grid);
 double convergence_criteria(Grid_Array** grid);
 void free(Grid_Array** grid);
+void potential_line(Grid_Array** grid, int n, int* _N, int M1, int M2);
+void paint(int k, Grid_Array** grid);
+int scan(double V, Grid_Array** grid);
+void paint_all(int n, int M1, int M2, int M, int N, Grid_Array** grid, double z0, double r0, double* dz, double delta);
+double* V_r, * V_z; //存扫描点坐标
+double* z1, * r1;
 
 int main()
 {
@@ -34,13 +43,13 @@ int main()
 	double V_c = 0, V_s = 100;		//定义光阴极和荧光屏电压分别为0和100V
 	int n = 7;						//定义电极数（包含荧光屏，不包含阴极）
 	double delta = 0.5;				//定义电极宽度δ
-	double z0 = 53.4, r0 = 32;		//定义径向和轴向的宽度
+	double z0 = 56.4, r0 = 32;		//定义径向和轴向的宽度
 	double r2 = 12, r1 = r0 - r2;   //r2为电极插入电场的深度，r1为电极底端到轴的距离
 	double dz[7];				    //定义每个电极的间距
 	int _N[7];						//定义每个电极之间所取的格数（水平方向），加下划线为了与全局变量N区别
 	double V[6];					//定义各个电极电压
 	int M1, M2;					    //竖直方向格数划分的要求
-
+	double delta_V;                 //给定电位间隔
 	V[0] = 24; V[1] = 40; V[2] = 62; V[3] = 74; V[4] = 85; V[5] = 96;
 	dz[0] = 5.2; dz[1] = 8.6; dz[2] = 8.6; dz[3] = 8.6; dz[4] = 8.6; dz[5] = 8.6; dz[6] = 5.2;
 	_N[0] = 3; _N[1] = 5; _N[2] = 5; _N[3] = 5; _N[4] = 5; _N[5] = 5; _N[6] = 2;
@@ -86,6 +95,7 @@ int main()
 		cout << endl;
 	}
 	//cout << sum(grid)/(M*N) << endl;
+	paint_all(n, M1, M2, M, N, grid, z0, r0, dz, delta);
 	free(grid);//运行结束，释放内存
 
 	return 0;
@@ -391,4 +401,168 @@ void free(Grid_Array** grid)
 		delete[] grid[i];
 	}
 	delete[] grid;
+}
+
+void paint_all(int n, int M1, int M2, int M, int N, Grid_Array** grid, double z0, double r0, double* dz, double delta)
+//画电位线
+{
+	int i, j, k, num;
+	double z_temp1, z_temp2, V_temp1, V_temp2, t;
+	V_z = (double*)malloc(n * (M1 + M2) * sizeof(double));
+	V_r = (double*)malloc(n * (M1 + M2) * sizeof(double));
+	z1 = (double*)malloc(N * sizeof(double));
+	r1 = (double*)malloc(M * sizeof(double));
+	z1[0] = 0;
+	for (i = 1; i < N; i++)
+	{
+		z1[i] = z1[i - 1] + grid[0][i - 1].h2;  //累加求和，计算每一点离原点的轴向距离，等效于matlab中cumsum
+	}
+	r1[0] = 0;
+	for (i = 1; i < M; i++)
+	{
+		r1[i] = grid[i][0].r;
+	}
+
+	for (i = 0; i < n * (M1 + M2); i++)
+	{
+		V_z[i] = 0;
+		V_r[i] = 0;
+	}
+	initgraph(10 * z0, 10 * r0);  //初始化绘图窗口，宽为z0*10，高为r0*10
+	setorigin(0, 10 * r0);  //设置原点为（0，r0*10）
+	setaspectratio(1, -1);  //设置当前缩放因子,翻转y轴，使y朝上为正
+
+	t = dz[0];  //t表示轴向，用于定位电极位置
+	for (int i = 1; i < n; i = i + 1)  //用蓝色线绘制电极左半部分
+	{
+		setcolor(RGB(0, 0, 255));
+		line(t * 10, r0 * 10, t * 10, grid[M2][0].r * 10);  //line(x1,y1,x2,y2)函数，输入起点，终点
+		t = t + dz[i] + delta;
+	}
+
+	//用蓝色线绘制电极右半部分
+	t = dz[0] + delta;
+	for (int i = 1; i < n; i = i + 1)
+	{
+		setcolor(RGB(0, 0, 255));
+		line(t * 10, r0 * 10, t * 10, grid[M2][0].r * 10);
+		t = t + dz[i] + delta;
+	}
+
+	//用蓝色线连接电极
+	t = dz[0];
+	for (int i = 1; i < n; i = i + 1)
+	{
+		setcolor(RGB(0, 0, 255));
+		line(t * 10, grid[M2][0].r * 10, (t + delta) * 10, grid[M2][0].r * 10);
+		t = t + dz[i] + delta;
+	}
+	k = scan(64, grid);
+	paint(k, grid);
+	system("pause");
+	closegraph();
+}
+
+int scan(double V, Grid_Array** grid)
+//扫描，输入待扫描电位，以及网格grid
+{
+	int i, j, k = 0;
+	double r, z;
+	for (i = 0; i < M; i++)
+	{
+		for (j = 0; j < N - 1; j++)
+		{
+			if ((grid[i][j].voltage <= V && grid[i][j + 1].voltage > V) || (grid[i][j].voltage >= V && grid[i][j + 1].voltage < V))  //判断待扫描电位的位置区间
+			{
+				z = z1[j] + grid[0][j].h2 * (V - grid[i][j].voltage) / (grid[i][j + 1].voltage - grid[i][j].voltage);  //插值法计算待扫描电位位置
+				V_z[k] = 200 + 10 * z;
+				V_r[k] = 310 + 10 * (r1[M - 1] - r1[i]);
+				k++;
+			}
+		}
+	}
+	for (j = 0; j < N; j++)
+	{
+		for (i = 0; i < M - 1; i++)
+		{
+			if ((grid[i][j].voltage <= V && grid[i + 1][j].voltage > V) || (grid[i][j].voltage >= V && grid[i + 1][j].voltage < V))
+			{
+				r = r1[i] + grid[i][0].h4 * (V - grid[i][j].voltage) / (grid[i + 1][j].voltage - grid[i][j].voltage);
+				V_z[k] = 200 + 10 * z1[j];
+				V_r[k] = 310 + 10 * (r1[M - 1] - r);
+				k++;
+			}
+		}
+	}
+	return k;
+}
+
+void paint(int k, Grid_Array** grid) //画线//
+{
+	int i, j;
+	double temp, x, y, xy;
+	x = grid[0][0].h2;
+	for (i = 0; i < N - 1; i++)  //判断轴向间距最小值
+	{
+		if (x < grid[0][i].h2)
+			x = grid[0][i].h2;
+	}
+	y = grid[0][0].h4;
+	if (y < grid[M - 2][0].h4)
+		y = grid[M - 2][0].h4;
+	xy = sqrt(pow(x, 2) + pow(y, 2));
+	for (i = 1; i < k; i++)
+	{
+		for (j = 1; j <= k - i; j++)  //冒泡排序
+		{
+			if (V_z[j - 1] >= V_z[j])
+			{
+				temp = V_z[j - 1];
+				V_z[j - 1] = V_z[j];
+				V_z[j] = temp;
+				temp = V_r[j - 1];
+				V_r[j - 1] = V_r[j];
+				V_r[j] = temp;
+			}
+		}
+	}
+	for (i = 0; i < k; i++)
+	{
+		for (j = i + 1; j < k; j++)
+		{
+			if (sqrt(pow(V_r[j] - V_r[i], 2) + pow(V_z[j] - V_z[i], 2)) < 10.2 * xy &&
+				fabs(V_r[j] - V_r[i]) < 10.2 * y && fabs(V_z[j] - V_z[i]) < 10.2 * x)
+			{
+				line(int(V_z[i]), int(V_r[i]), int(V_z[j]), int(V_r[j]));
+				break;
+			}
+		}
+	}
+	for (i = 1; i < k; i++)
+	{
+		for (j = 1; j <= k - i; j++)
+		{
+			if (V_z[j - 1] <= V_z[j])
+			{
+				temp = V_z[j - 1];
+				V_z[j - 1] = V_z[j];
+				V_z[j] = temp;
+				temp = V_r[j - 1];
+				V_r[j - 1] = V_r[j];
+				V_r[j] = temp;
+			}
+		}
+	}
+	for (i = 0; i < k; i++)
+	{
+		for (j = i + 1; j < k; j++)
+		{
+			if (sqrt(pow(V_r[j] - V_r[i], 2) + pow(V_z[j] - V_z[i], 2)) < 12 * xy &&
+				fabs(V_r[j] - V_r[i]) < 12 * y && fabs(V_z[j] - V_z[i]) < 12 * x)
+			{
+				line(int(V_z[i]), int(V_r[i]), int(V_z[j]), int(V_r[j]));
+				break;
+			}
+		}
+	}
 }
