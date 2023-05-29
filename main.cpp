@@ -20,10 +20,10 @@ struct Grid_Array  //定义电场网格结构
 
 
 //定义全局变量
-int M, N;//网格数M*N
+int M, N;//网数M*N
 int mode = 1;  //定义工作模式，1为第一类像管，2为第二类像管
 //声明函数
-void grid_initialize_mode_1(Grid_Array** grid, double cathode_voltage, double screen_voltage, int n, double* dz, int* _N, double* V, double r1, double r2, int M1, int M2, double delta);
+void grid_initialize_mode_1(Grid_Array** grid, double screen_voltage, int n, double* dz, int* _N, double* V, double r1, double r2, int M1, int M2, double delta);
 double residual(Grid_Array** grid);
 double SOR(Grid_Array** grid, double omega);
 double select_accelerator_factor(Grid_Array** grid);
@@ -39,24 +39,45 @@ double* z1, * r1;
 int main()
 {
 	//初始化
-	//////////////////注意！！M*N为网数，而_N与M1、M2是格数///////////////////////////////
-	double V_c = 0, V_s = 100;		//定义光阴极和荧光屏电压分别为0和100V
+	mode = 1;
+	///以下为两类像管通用参数
+	double V_s = 100;				//定义荧光屏电压为100V
 	int n = 7;						//定义电极数（包含荧光屏，不包含阴极）
 	double delta = 0.5;				//定义电极宽度δ
+	double V[6];					//定义各个电极电压
+	int _N[7];						//电极之间横向所需要划分的网格数，加下划线为了与全局变量N区别
+	int _M[6];						//电极之间径向所需要划分的网格数，第二类像管使用此变量
+	int M1, M2;					    //竖直方向格数划分的要求，第一类像管使用此变量
+	double dz[7];				    //定义每个电极的轴向间距，两类像管均用到此变量
+	double dr[6];					//定义电极径向间距，第二类像管用此变量
+	//以下为第一类像管用到的变量
 	double z0 = 56.4, r0 = 32;		//定义径向和轴向的宽度
 	double r2 = 12, r1 = r0 - r2;   //r2为电极插入电场的深度，r1为电极底端到轴的距离
-	double dz[7];				    //定义每个电极的间距
-	int _N[7];						//定义每个电极之间所取的格数（水平方向），加下划线为了与全局变量N区别
-	double V[6];					//定义各个电极电压
-	int M1, M2;					    //竖直方向格数划分的要求
-	double delta_V;                 //给定电位间隔
-	V[0] = 24; V[1] = 40; V[2] = 62; V[3] = 74; V[4] = 85; V[5] = 96;
-	dz[0] = 5.2; dz[1] = 8.6; dz[2] = 8.6; dz[3] = 8.6; dz[4] = 8.6; dz[5] = 8.6; dz[6] = 5.2;
-	_N[0] = 3; _N[1] = 5; _N[2] = 5; _N[3] = 5; _N[4] = 5; _N[5] = 5; _N[6] = 2;
-	M1 = 11; M2 = 7;
-	//计算总网数M与N
-	M = M1 + M2 + 1;  //格数是M1+M2,网数还要加一
-	N = _N[0] + _N[1] + _N[2] + _N[3] + _N[4] + _N[5] + _N[6] + n; //有_N+n-1个格数，网数需要加一
+	//////////////////注意！！M*N为网数，而_N与M1、M2是格数///////////////////////////////
+	if (mode == 1)  //第一类像管的参数
+	{
+		//赋初值
+		V[0] = 24; V[1] = 40; V[2] = 62; V[3] = 74; V[4] = 85; V[5] = 96;
+		dz[0] = 5.2; dz[1] = 8.6; dz[2] = 8.6; dz[3] = 8.6; dz[4] = 8.6; dz[5] = 8.6; dz[6] = 5.2;
+		_N[0] = 3; _N[1] = 5; _N[2] = 5; _N[3] = 5; _N[4] = 5; _N[5] = 5; _N[6] = 2;
+		M1 = 11; M2 = 7;
+		//计算总网数M与N
+		M = M1 + M2 + 1;  //格数是M1+M2,网数还要加一
+		N = _N[0] + _N[1] + _N[2] + _N[3] + _N[4] + _N[5] + _N[6] + n; //有_N+n-1个格数，网数需要加一
+	}
+
+	else if (mode == 2)  //第二类像管参数
+	{
+		//赋初值
+		V[0] = 24; V[1] = 40; V[2] = 62; V[3] = 74; V[4] = 85; V[5] = 96;
+		dr[0] = 5.2; dr[1] = 8.6; dr[2] = 8.6; dr[3] = 8.6; dr[4] = 8.6; dr[5] = 8.6;
+		dz[0] = 5.2; dz[1] = 8.6; dz[2] = 8.6; dz[3] = 8.6; dz[4] = 8.6; dz[5] = 8.6; dz[6] = 5.2;
+		_N[0] = 3; _N[1] = 5; _N[2] = 5; _N[3] = 5; _N[4] = 5; _N[5] = 5; _N[6] = 2;
+		_M[0] = 3; _M[1] = 5; _M[2] = 5; _N[3] = 5; _M[4] = 5; _M[5] = 5;
+		//计算总网数
+		M = _M[0] + _M[1] + _M[2] + _M[3] + _M[4] + _M[5] + n;
+		N = _N[0] + _N[1] + _N[2] + _N[3] + _N[4] + _N[5] + _N[6] + 1;
+	}
 
 	double omega;  //定义加速因子ω
 	double epsilon = 0.005;  //迭代精度为0.005
@@ -73,14 +94,14 @@ int main()
 	{
 		grid[i] = new Grid_Array[N];  //第二层指向列
 	}
-	grid_initialize_mode_1(grid, V_c, V_s, n, dz, _N, V, r1, r2, M1, M2, delta);
+	grid_initialize_mode_1(grid, V_s, n, dz, _N, V, r1, r2, M1, M2, delta);
 	omega = select_accelerator_factor(grid);
 	do
 	{
 		SOR(grid, omega);
 	} while (convergence_criteria(grid) > epsilon);
 	cout << "iteration times:" << endl;
-	cout << grid[5][5].k << endl;
+	cout << omega << endl;
 
 
 	//c++中用cout来输出，使用cout输出矩阵
@@ -105,8 +126,8 @@ int main()
 
 
 //用于初始化第一类像管的电场网格
-void grid_initialize_mode_1(Grid_Array** grid, double cathode_voltage, double screen_voltage, int n, double* dz, int* _N, double* V, double r1, double r2, int M1, int M2, double delta)
-//输入电场网格，网格宽度、高度、阴极电压、荧光屏电压、电极个数n、网格间距（传入数组dz）、水平方向网格划分要求（传入数组_N）、电极电压（数组V）
+void grid_initialize_mode_1(Grid_Array** grid, double screen_voltage, int n, double* dz, int* _N, double* V, double r1, double r2, int M1, int M2, double delta)
+//输入电场网格，荧光屏电压、电极个数n、网格间距（传入数组dz）、水平方向网格划分要求（传入数组_N）、电极电压（数组V）
 //电极底到轴距r1、电极深度r2，垂直方向网格划分要求M1,M2、电极宽度delta
 {
 	//遍历网格进行初始化
@@ -160,7 +181,7 @@ void grid_initialize_mode_1(Grid_Array** grid, double cathode_voltage, double sc
 			//第一列（光阴极）
 			if (j == 0)
 			{
-				grid[i][j].voltage = cathode_voltage;
+				grid[i][j].voltage = 0;
 				grid[i][j].h1 = 0;
 				grid[i][j].h2 = dz[0] / (_N[0]);
 				grid[i][j].is_margin = true;
@@ -179,7 +200,7 @@ void grid_initialize_mode_1(Grid_Array** grid, double cathode_voltage, double sc
 							grid[i][j].is_margin = true;
 							if (k == 0)  //若在阴极和第一个电极间，线性插值计算边界电压
 							{
-								grid[i][j].voltage = (V[0] - cathode_voltage) * j / _N[0];
+								grid[i][j].voltage = V[0] * j / _N[0];
 							}
 							else if (k != (n - 1))  //若不在最后一个电极到荧光屏区间
 							{
@@ -255,6 +276,13 @@ void grid_initialize_mode_1(Grid_Array** grid, double cathode_voltage, double sc
 		grid[i][N - 1].is_margin = true;
 	}
 }
+//用于初始化第二类像管的电场网格
+void grid_initialize_mode_2(Grid_Array** grid, double screen_voltage, int n, double* dz, double* dr, int* _N, int* _M, double* V, double delta)
+//输入电场网格，荧光屏电压、电极个数n、网格轴向间距（传入数组dz）、径向间距dr、水平方向网格划分要求（传入数组_N）、垂直方向网格划分要求_M、电极电压（数组V）、电极宽度delta
+{
+	//要考试了，下周再写喵
+}
+
 
 //用于计算残差的均值
 double residual(Grid_Array** grid)
