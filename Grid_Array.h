@@ -16,18 +16,38 @@ extern double r1,r2;         // r2Îªµç¼«²åÈëµç³¡µÄÉî¶È£¬r1Îªµç¼«µ×¶Ëµ½ÖáµÄ¾àÀë(µ
 extern int* _M;              // µç¼«Ö®¼ä¾¶ÏòËùĞèÒª»®·ÖµÄÍø¸ñÊı£¬µÚ¶şÀàÏñ¹ÜÊ¹ÓÃ´Ë±äÁ¿
 extern double* dr;           // µç¼«ÄÚ¿×°ë¾¶(µÚ¶şÀà)
 extern double epsilon;       // µü´ú¾«¶È(Í¨ÓÃ)
-extern double omega;		 // ¼ÓËÙÒò×Ó¦Ø
+extern double omega_1;		 // ¼ÓËÙÒò×Ó¦Ø£¬ÎŞ°°µã
+extern double omega_2;		 // ¼ÓËÙÒò×Ó¦Ø£¬ÓĞ°°µã
 extern int NST;              // Êä³ö´òÓ¡¿Õ¼äµçÎ»Ê±Íø¸ñµã¼ä¸ôÊı(Í¨ÓÃ)
 extern int INS;              // ÖáÉÏµçÎ»×öµÈ¾à²åÖµÊ±²½³¤Êı(Í¨ÓÃ)
 extern int* V1;              // ÒªÇóÉ¨ÃèµÈµçÎ»ÏßµÄµçÎ»¼ä¸ô»òÕßµçÎ»Öµ(Í¨ÓÃ)
+extern int tmp;				 // Êä³öµÈÎ»ÏßÒªÇó
+extern int count1;			 // µÈÎ»Ïß¼ÆÊıÆ÷
+extern int iteration_times_1;  // µü´ú´ÎÊı£¬ÎŞ°°µã
+extern int iteration_times_2;  // µü´ú´ÎÊı
+extern bool round_p;
+extern int round_n;
+extern int times_n;
+
+struct Iteration_Process  //´æ´¢µü´ú¹ı³ÌµÄÁ´±í
+{
+	double omega_r;  //µ±Ç°µü´úµÄomega
+	double avg_res;  //Æ½¾ù²Ğ²î
+	double max_res;  //×î´ó²Ğ²î
+	int round;		 //µü´úÂÖ´Î
+	int times;		 //±¾ÂÖµÚ¼¸´Î
+	Iteration_Process* next;
+};
+extern Iteration_Process* head1;  //´æ´¢Í·½áµã
+extern Iteration_Process* head2;
 
 //ÎÄ¼şÉùÃ÷
-extern FILE* handle;
+extern FILE* handle_read;
+extern FILE* handle_write; //Ğ´ÎÄ¼şµÄ¾ä±ú
 extern errno_t err;
 
 struct Grid_Array  //¶¨Òåµç³¡Íø¸ñ½á¹¹
 {
-	int k;  //´æ´¢µü´ú´ÎÊık
 	double voltage;  //´æ´¢¸÷Íø¸ñµãµü´úk´ÎµÄµçÑ¹
 	double voltage_before;  //´æ´¢ÉÏÒ»´Îµü´úµÄµçÑ¹
 	bool is_margin;  //ÅĞ¶ÏÍø¸ñµãÊÇ·ñÊÇ±ß½ç£¬1±íÊ¾ÊÇ±ß½ç

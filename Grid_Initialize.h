@@ -16,7 +16,6 @@ void grid_initialize_mode_1(Grid_Array** grid, double screen_voltage, int n, dou
 			grid[i][j].is_margin = false;  //初始全部设置为非边界
 			grid[i][j].is_inside = true;  //第一类像管除边界，其余全部参与迭代
 			grid[i][j].on_axis = false;  //初始设置为非轴上点
-			grid[i][j].k = 0;
 
 			//设置垂直间距h3,h4
 			//设置第一行
@@ -201,7 +200,6 @@ void grid_initialize_mode_2(Grid_Array** grid, double screen_voltage, int n, dou
 			grid[i][j].is_margin = false;  //初始全部设置为非边界
 			grid[i][j].on_axis = false;  //初始设置为非轴上点
 			grid[i][j].is_inside = false;//初始设置为非内部
-			grid[i][j].k = 0;
 			grid[i][j].r = 0;
 			grid[i][j].h1 = 0;
 			grid[i][j].h2 = 0;

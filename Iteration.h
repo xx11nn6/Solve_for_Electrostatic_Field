@@ -2,6 +2,8 @@
 #include "Grid_Array.h"
 #include <numeric>
 
+//判断变量
+
 
 //计算残差的均值
 double residual(Grid_Array** grid)
@@ -21,11 +23,34 @@ double residual(Grid_Array** grid)
 	return res;
 }
 
+//迭代精度判断（计算残差最大值）
+double convergence_criteria(Grid_Array** grid)
+{
+	double max_error, temp;
+	max_error = 0;
+	for (int i = 0; i < M; i++)
+	{
+		for (int j = 0; j < N; j++)
+		{
+			if (grid[i][j].is_margin == false)//对非边界点判断
+			{
+				temp = abs(grid[i][j].voltage - grid[i][j].voltage_before);//用网格点与上一次迭代相比
+				if (temp > max_error)
+				{
+					max_error = temp;  //取所有误差中的最大值
+				}
+			}
+		}
+	}
+	return max_error;
+}
+
 
 
 //进行一次SOR迭代
-void SOR(Grid_Array** grid, double omega)
+void SOR(Grid_Array** grid, double omega, Iteration_Process*& ite, int* iterate_times)
 {
+
 	for (int i = 0; i < M; i++)
 	{
 		for (int j = 0; j < N; j++)
@@ -56,7 +81,6 @@ void SOR(Grid_Array** grid, double omega)
 					phi_after = (1 - omega) * phi + omega * phi_after;
 					grid[i][j].voltage_before = phi;
 					grid[i][j].voltage = phi_after;
-					grid[i][j].k += 1;
 				}
 				else  //轴上点的迭代，其格式相同，只不过系数不同
 				{
@@ -72,7 +96,6 @@ void SOR(Grid_Array** grid, double omega)
 					phi_after = (1 - omega) * phi + omega * phi_after;
 					grid[i][j].voltage_before = phi;
 					grid[i][j].voltage = phi_after;
-					grid[i][j].k += 1;
 				}
 			}
 			else
@@ -81,12 +104,36 @@ void SOR(Grid_Array** grid, double omega)
 			}
 		}
 	}
+
+
+	//迭代后再设置链表
+	ite->next = new Iteration_Process();
+	ite->next->next = nullptr;
+	// 移动 ite 到新的节点上
+	ite = ite->next;
+	ite->avg_res = residual(grid);
+	ite->max_res = convergence_criteria(grid);
+	ite->omega_r = omega;
+	*iterate_times += 1;
+
+	if (round_p)
+	{
+		round_n += 1;
+		times_n = 1;	
+		round_p = false;
+	}
+	else 
+	{
+		times_n += 1;
+	}
+	ite->round = round_n;
+	ite->times = times_n;
 }
 
 
 
 //最佳加速因子ω的选择
-double select_accelerator_factor(Grid_Array** grid)
+double select_accelerator_factor(Grid_Array** grid, Iteration_Process*& ite,int* iterate_times)
 {
 	double E_bar;
 	double E_bar_after;
@@ -95,7 +142,8 @@ double select_accelerator_factor(Grid_Array** grid)
 	double omega_m_bar;  //用于两轮迭代算出的加速因子ω_m平均值
 
 	double omega = 1;  //取omega=1迭代一次
-	SOR(grid, omega);
+	SOR(grid, omega, ite, iterate_times);
+	round_p = true;
 	omega = 1.375;
 	do
 	{
@@ -103,13 +151,14 @@ double select_accelerator_factor(Grid_Array** grid)
 		for (int i = 0; i < 12; i++)
 		{
 			E_bar = residual(grid);  //计算第一次残差
-			SOR(grid, omega);  //迭代一次
+			SOR(grid, omega, ite, iterate_times);  //迭代一次
 			E_bar_after = residual(grid);  //再次计算残差
 			if (i > 8)//最后三次迭代
 			{
 				lambda += (E_bar_after / E_bar);  //取最后三次λ相加
 			}
 		}
+		round_p = true;
 		lambda /= 3;  //计算最后三次迭代λ均值
 		mu_l = (lambda + omega - 1) / (sqrt(lambda) * omega);
 		omega_l = 2 / (1 + sqrt(1 - (pow(mu_l, 2))));
@@ -123,24 +172,3 @@ double select_accelerator_factor(Grid_Array** grid)
 
 
 
-//迭代精度判断
-double convergence_criteria(Grid_Array** grid)
-{
-	double max_error, temp;
-	max_error = 0;
-	for (int i = 0; i < M; i++)
-	{
-		for (int j = 0; j < N; j++)
-		{
-			if (grid[i][j].is_margin == false)//对非边界点判断
-			{
-				temp = abs(grid[i][j].voltage - grid[i][j].voltage_before);//用网格点与上一次迭代相比
-				if (temp > max_error)
-				{
-					max_error = temp;  //取所有误差中的最大值
-				}
-			}
-		}
-	}
-	return max_error;
-}

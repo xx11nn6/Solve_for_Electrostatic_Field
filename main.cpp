@@ -1,6 +1,6 @@
 #include <iostream>
 #include <malloc.h>
-#include<stdlib.h>
+#include <stdlib.h>
 #include <numeric>
 #include <iomanip>
 #include <graphics.h>		// 引用 EasyX 图形库
@@ -29,16 +29,30 @@ int* _N;              // 相邻电极间划分步长(通用)
 double* V;            // 各个电极电压
 double* VI;           // 含鞍点电极电位(通用)
 int M1, M2;           // 竖直方向格数划分的要求，第一类像管使用此变量
-double r1, r2;         // r2为电极插入电场的深度，r1为电极底端到轴的距离(第一类像管使用)
+double r1, r2;        // r2为电极插入电场的深度，r1为电极底端到轴的距离(第一类像管使用)
 int* _M;              // 电极之间径向所需要划分的网格数，第二类像管使用此变量
 double* dr;           // 电极内孔半径(第二类)
 double epsilon;       // 迭代精度(通用)
-double omega;		 // 加速因子ω
+double omega_1;		  // 加速因子ω，无鞍点
+double omega_2;
 int NST;              // 输出打印空间电位时网格点间隔数(通用)
 int INS;              // 轴上电位做等距插值时步长数(通用)
 int* V1;              // 要求扫描等电位线的电位间隔或者电位值(通用)
 int i;                // 循环用参数
-FILE* handle;
+int count1;		      // 等位线计数器
+int tmp;			  // 输出等位线要求
+int iteration_times_1;  // 迭代次数，无鞍点
+int iteration_times_2;  // 迭代次数，有鞍点
+
+bool round_p = false;
+int round_n;
+int times_n;
+
+Iteration_Process* head1;  //头结点，无鞍点
+Iteration_Process* head2;  //头结点，无鞍点
+
+FILE* handle_read;	//读文件的句柄
+FILE* handle_write; //写文件的句柄
 errno_t err;
 // 一个计数器，判断扫描等位线的条数
 
@@ -47,101 +61,27 @@ errno_t err;
 
 int main()
 {
-#if 0
-	//初始化
-	mode = 2;
-	double V_s;		//荧光屏电压
-	//以下为第一类像管用到的变量
-	//////////////////注意！！M*N为网数，而_N与_M是格数///////////////////////////////
-	if (mode == 1)  //第一类像管的参数
-	{
-		//赋初值
-		V[0] = 24; V[1] = 40; V[2] = 62; V[3] = 74; V[4] = 85; V[5] = 96;
-		dz[0] = 5.2; dz[1] = 8.6; dz[2] = 8.6; dz[3] = 8.6; dz[4] = 8.6; dz[5] = 8.6; dz[6] = 5.2;
-		_N[0] = 3; _N[1] = 5; _N[2] = 5; _N[3] = 5; _N[4] = 5; _N[5] = 5; _N[6] = 2;
-		M1 = 11; M2 = 7;
-		//计算总网数M与N
-		M = M1 + M2 + 1;  //格数是M1+M2,网数还要加一
-		N = _N[0] + _N[1] + _N[2] + _N[3] + _N[4] + _N[5] + _N[6] + n; //有_N+n-1个格数，网数需要加一
-	}
-
-	else if (mode == 2)  //第二类像管参数
-	{
-		//赋初值
-		V[0] = 24; V[1] = 40; V[2] = 62; V[3] = 74; V[4] = 85; V[5] = 96;
-		dr[0] = 5.2; dr[1] = 8.6; dr[2] = 8.6; dr[3] = 8.6; dr[4] = 8.6; dr[5] = 8.6;
-		dz[0] = 5.2; dz[1] = 8.6; dz[2] = 8.6; dz[3] = 8.6; dz[4] = 8.6; dz[5] = 8.6; dz[6] = 8.6; dz[7] = 5.2;
-		_N[0] = 3; _N[1] = 5; _N[2] = 5; _N[3] = 5; _N[4] = 5; _N[5] = 5; _N[6] = 5; _N[7] = 3;
-		_M[0] = 3; _M[1] = 5; _M[2] = 5; _M[3] = 5; _M[4] = 5; _M[5] = 5;
-		//计算总网数
-		M = _M[0] + _M[1] + _M[2] + _M[3] + _M[4] + _M[5] + n;
-		N = _N[0] + _N[1] + _N[2] + _N[3] + _N[4] + _N[5] + _N[6] +_N[7]+ 1;
-	}
-
-
-	//new用于动态分配内存
-	//例如：int* p = new int[10];
-	//这句话表示分配10个int类型的空间，返回首地址存储在p中
-	//因此可以用来创建一个可变大小的数组
-	//要想创建二维数组，则必须使用双重指针
-	Grid_Array** grid = new Grid_Array * [M];  //第一层指针指向行
-	for (int i = 0; i < M; i++)
-	{
-		grid[i] = new Grid_Array[N];  //第二层指向列
-	}
-
-	grid_initialize_mode_2(grid, V_s, n, dz, dr, _N, _M, V, delta);
-	
-	//grid_initialize_mode_1(grid, V_s, n, dz, _N, V, r1, r2, M1, M2, delta);  //初始化第一类像管
-	///*
-	omega = select_accelerator_factor(grid);  //加速因子omega选取
-	do
-	{
-		SOR(grid, omega);  //进行迭代直至符合精度条件
-	} while (convergence_criteria(grid) > epsilon);
-
-	cout << "accelerator factor omega:" << endl;  //输出加速因子
-	cout << omega << endl;
-	cout << "iteration times:" << endl;  //输出迭代次数
-	cout << grid[M-2][N-2].k << endl;
-	//*/
-	//输出网格电位
-	cout << "grid:" << endl;
-	for (int i = 0; i < M; i++)
-	{
-		for (int j = 0; j < N; j++)
-		{
-			cout << " " << setfill(' ') << setw(4) << setprecision(6) << grid[i][j].voltage_before << " ";  //setfill等函数是iomanip库中的函数，用于控制输出格式
-			//cout << "(" << setprecision(2) << grid[i][j].h3 << "," << setprecision(2) << grid[i][j].h4 << ") ";
-		}
-		cout << endl;
-	}
-	//cout << sum(grid)/(M*N) << endl;
-	//绘图
-	//paint_all(n, M1, M2, M, N, grid, z0, r0, dz, delta);
-	system("pause");
-	free_grid(grid);//运行结束，释放内存
-#endif
-	
 	//读文件捏
-	if ((err = fopen_s(&handle, "test2.txt", "rt")) != 0)
+	count1 = 0;
+	if ((err = fopen_s(&handle_read, "test5.txt", "rt")) != 0)
 	{
 		printf("找不到文件！错误码：%d\n", err);
 		return -1;
 	}
 
 
-	fopen_s(&handle, "test2.txt", "rt");
-	if (fscanf_s(handle, "%d\n", &mode) == 1 && mode == 2)
+	fopen_s(&handle_read, "test5.txt", "rt");
+	if (fscanf_s(handle_read, "%d\n", &mode) == 1 && mode == 2)
 	{
-		readdata2("test2.txt");
-		fclose(handle);
+		readdata2(handle_read);
+		fclose(handle_read);
 	}
 	else
 	{
-		readdata1("test2.txt");
-		fclose(handle);
+		readdata1(handle_read);
+		fclose(handle_read);
 	}
+
 
 	double V_s = V[n - 1];  //定义荧光屏电压
 	//计算M和N
@@ -174,32 +114,84 @@ int main()
 	//这句话表示分配10个int类型的空间，返回首地址存储在p中
 	//因此可以用来创建一个可变大小的数组
 	//要想创建二维数组，则必须使用双重指针
-	Grid_Array** grid = new Grid_Array * [M];  //第一层指针指向行
+
+	//无鞍点网格
+	Grid_Array** grid1 = new Grid_Array * [M];  //第一层指针指向行
 	for (int i = 0; i < M; i++)
 	{
-		grid[i] = new Grid_Array[N];  //第二层指向列
+		grid1[i] = new Grid_Array[N];  //第二层指向列
 	}
+
+
+	//有鞍点网格
+	Grid_Array** grid2 = new Grid_Array * [M];  //第一层指针指向行
+	for (int i = 0; i < M; i++)
+	{
+		grid2[i] = new Grid_Array[N];  //第二层指向列
+	}
+
+	cout << "\ncount:" << count1 << endl;
 
 	//初始化像管
 	if (mode == 1)
 	{
-		grid_initialize_mode_1(grid, V_s, n, dz, _N, V, r1, r2, M1, M2, delta);  //初始化第一类像管
+		grid_initialize_mode_1(grid1, V_s, n, dz, _N, V, r1, r2, M1, M2, delta);  //初始化第一类像管(无鞍点)
+		grid_initialize_mode_1(grid2, V_s, n, dz, _N, VI, r1, r2, M1, M2, delta);
 	}
 	else
 	{
-		grid_initialize_mode_2(grid, V_s, n, dz, dr, _N, _M, V, delta);
+		grid_initialize_mode_2(grid1, V_s, n, dz, dr, _N, _M, V, delta);
+		grid_initialize_mode_2(grid2, V_s, n, dz, dr, _N, _M, VI, delta);
 	}
 
-	omega = select_accelerator_factor(grid);  //加速因子omega选取
+	//创建无鞍点网格迭代过程链表
+	
+	iteration_times_1 = 0;
+	Iteration_Process* ite1 = new Iteration_Process();
+	ite1->next = nullptr;
+	head1 = ite1;
+	head1->omega_r = omega_1;
+	head1->avg_res = residual(grid1);
+	head1->max_res = convergence_criteria(grid1);
+	head1->round = 1;
+	head1->times = 1;
+	round_n = 1;
+	times_n = 0;
+
+	omega_1 = select_accelerator_factor(grid1, ite1,&iteration_times_1);  //加速因子omega选取
 	do
 	{
-		SOR(grid, omega);  //进行迭代直至符合精度条件
-	} while (convergence_criteria(grid) > epsilon);
+		SOR(grid1, omega_1, ite1, &iteration_times_1);  //进行迭代直至符合精度条件
+	} 
+	while (ite1->max_res >= epsilon);
+	
+	//有鞍点网格迭代过程链表
+	iteration_times_2 = 0;
+	Iteration_Process* ite2 = new Iteration_Process();
+	ite2->next = nullptr;
+	head2 = ite2;
+	head2->omega_r = omega_2;
+	head2->avg_res = residual(grid2);
+	head2->max_res = convergence_criteria(grid2);
+	head2->round = 1;
+	head2->times = 1;
+	round_n = 1;
+	times_n = 0;
+
+	omega_2 = select_accelerator_factor(grid2, ite2,&iteration_times_2);  //加速因子omega选取
+	do
+	{
+		SOR(grid2, omega_2, ite2,&iteration_times_2);  //进行迭代直至符合精度条件
+	} while (convergence_criteria(grid2) > epsilon);
+	
+
+
+	
 
 	cout << "accelerator factor omega:" << endl;  //输出加速因子
-	cout << omega << endl;
+	cout << omega_1 << endl;
 	cout << "iteration times:" << endl;  //输出迭代次数
-	cout << grid[M - 2][N - 2].k << endl;
+	cout << iteration_times_1 << endl;
 	//*/
 	//输出网格电位
 	cout << "grid:" << endl;
@@ -207,11 +199,26 @@ int main()
 	{
 		for (int j = 0; j < N; j++)
 		{
-			cout << " " << setw(4)<< setfill(' ')  << setprecision(4) << grid[i][j].voltage_before << " ";  //setfill等函数是iomanip库中的函数，用于控制输出格式
+			;
+			//cout << " " << setw(4)<< setfill(' ')  << setprecision(4) << grid[i][j].r << " ";  //setfill等函数是iomanip库中的函数，用于控制输出格式
 			//cout << "(" << setprecision(2) << grid[i][j].h3 << "," << setprecision(2) << grid[i][j].h4 << ") ";
 		}
-		cout << endl;
+		//cout << endl;
 	}
+
+
+
+	//写文件，输出
+	if ((err = fopen_s(&handle_write, "输出.res", "w")) != 0)
+	{
+		printf("找不到文件！错误码：%d\n", err);
+		return -1;
+	}
+
+	writedata(handle_write, grid1, grid2, head1, head2);
+	fclose(handle_write);
+
+
 
 	free(dz);
 	free(_N);
@@ -220,7 +227,7 @@ int main()
 	free(dr);
 	free(_M);
 	free(V1);
-
+	free_grid(grid1);//运行结束，释放内存
 	return 0;
 }
 

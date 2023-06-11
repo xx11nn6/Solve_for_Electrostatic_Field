@@ -1,77 +1,78 @@
 #define FILE_OPERATION_H  //包括文件的读写
 #include "Grid_Array.h"
-#include<stdio.h>
-#include<stdlib.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 
 
 
-int readdata1(const char* filepath)
+int readdata1(FILE* file)
 {
-    int tmp = 0;
-    int count = 0;
+    tmp = 0;
+    //int count = 0;
     int i;
     // 读取数据
-    //fopen_s(&handle, filepath, "rt");
+    //fopen_s(&file, filepath, "rt");
 
-    fscanf_s(handle, "delta = %lf mm; n = %d;\n", &delta, &n); // 电极宽度
+    fscanf_s(file, "delta = %lf mm; n = %d;\n", &delta, &n); // 电极宽度
 
-    dz = (double*)malloc((n+1) * sizeof(double)); // 相邻电极间距离
-    fscanf_s(handle, "Zi =");
-    for (i = 0; i < n+1; i++)
+    dz = (double*)malloc(n * sizeof(double)); // 相邻电极间距离
+    fscanf_s(file, "Zi =");
+    for (i = 0; i < n; i++)
     {
-        fscanf_s(handle, " %lf", &dz[i]);
+        fscanf_s(file, " %lf", &dz[i]);
     }
-    fscanf_s(handle, "mm;\n");
+    fscanf_s(file, "mm;\n");
 
     _N = (int*)malloc(n * sizeof(int)); // 相邻电极间步长
-    fscanf_s(handle, "Ni =");
+    fscanf_s(file, "Ni =");
     for (i = 0; i < n; i++)
     {
-        fscanf_s(handle, " %d", &_N[i]);
+        fscanf_s(file, " %d", &_N[i]);
     }
-    fscanf_s(handle, ";\n");
+    fscanf_s(file, ";\n");
 
     V = (double*)malloc(n * sizeof(double)); // 电极电位
-    fscanf_s(handle, "Vi =");
+    fscanf_s(file, "Vi =");
     for (i = 0; i < n; i++)
     {
-        fscanf_s(handle, " %lf", &V[i]);
+        fscanf_s(file, " %lf", &V[i]);
     }
-    fscanf_s(handle, "V;\n");
+    fscanf_s(file, "V;\n");
 
     VI = (double*)malloc(n * sizeof(double)); // 含鞍点电极电位
-    fscanf_s(handle, "Vi =");
+    fscanf_s(file, "Vi =");
     for (i = 0; i < n; i++)
     {
-        fscanf_s(handle, " %lf", &VI[i]);
+        fscanf_s(file, " %lf", &VI[i]);
     }
-    fscanf_s(handle, "V;\n");
+    fscanf_s(file, "V;\n");
 
-    fscanf_s(handle, "r1 = %lf mm; M1 = %d; r2 = %lf mm; M2 = %d;\n", &r1, &M1, &r2, &M2);
+    fscanf_s(file, "r1 = %lf mm; M1 = %d; r2 = %lf mm; M2 = %d;\n", &r1, &M1, &r2, &M2);
 
-    fscanf_s(handle, "epsilon =%lf V;NST = %d;INS = %d.\n", &epsilon, &NST, &INS);
+    fscanf_s(file, "epsilon =%lf V;NST = %d;INS = %d.\n", &epsilon, &NST, &INS);
 
-    if (fscanf_s(handle, "%d\n", &tmp) == 1 && tmp == 3)
+    if (fscanf_s(file, "%d\n", &tmp) == 1 && tmp == 3)
     {
-        fscanf_s(handle, "dengweixian:%d V\n", &V1);
-    }
+        V1 = new int();
+        fscanf_s(file, "dengweixian:%d V\n", &V1[0]);
+    } 
     else
     {
         V1 = (int*)malloc((n + 10) * sizeof(int)); // 等位线
-        fscanf_s(handle, "dengweixian:");
+        fscanf_s(file, "dengweixian:");
         for (i = 0; i < n + 10; i++)
         {
-            fscanf_s(handle, "%d", &V1[i]);
-            count = count++;
-            if (feof(handle))
+            fscanf_s(file, "%d", &V1[i]);
+            count1 = count1++;
+            if (feof(file))
             {
                 break;
             }
         }
     }
 
-    fclose(handle);
+    fclose(file);
 
     // 打印读取到的数据，可根据需要自行调整
     printf("delta = %.1lf mm\n", delta);
@@ -122,12 +123,12 @@ int readdata1(const char* filepath)
 
     if (tmp == 3)
     {
-        printf("等位线间隔：%d V\n", V1);
+        printf("等位线间隔：%d V\n", V1[0]);
     }
     else
     {
         printf("等位线间隔:");
-        for (i = 0; i < count; i++)
+        for (i = 0; i < count1; i++)
         {
             printf(" %d", V1[i]);
         }
@@ -136,7 +137,7 @@ int readdata1(const char* filepath)
     return 0;
 }
 
-int readdata2(const char* filepath)
+int readdata2(FILE* file)
 {
 
 #if 0
@@ -160,85 +161,86 @@ int readdata2(const char* filepath)
     int i;
     m_V = 0;
 #endif
-    int tmp = 0;
-    int count = 0;
+    tmp = 0;
+    //int count = 0;
     int i;
-    //fopen_s(&handle, filepath, "rt");
+    //fopen_s(&file, filepath, "rt");
 
-    fscanf_s(handle, "delta = %lf mm; n = %d;\n", &delta, &n); // 电极宽度
+    fscanf_s(file, "delta = %lf mm; n = %d;\n", &delta, &n); // 电极宽度
 
     dz = (double*)malloc((n+1) * sizeof(double)); // 相邻电极间距离
-    fscanf_s(handle, "Zi =");
+    fscanf_s(file, "Zi =");
     for (i = 0; i < n+1; i++)
     {
-        fscanf_s(handle, " %lf", &dz[i]);
+        fscanf_s(file, " %lf", &dz[i]);
     }
-    fscanf_s(handle, "mm;\n");
+    fscanf_s(file, "mm;\n");
 
     _N = (int*)malloc((n + 1) * sizeof(int)); // 相邻电极间步长
-    fscanf_s(handle, "Ni =");
+    fscanf_s(file, "Ni =");
     for (i = 0; i < n + 1; i++)
     {
-        fscanf_s(handle, " %d", &_N[i]);
+        fscanf_s(file, " %d", &_N[i]);
     }
-    fscanf_s(handle, ";\n");
+    fscanf_s(file, ";\n");
 
     V = (double*)malloc(n * sizeof(double)); // 电极电位
-    fscanf_s(handle, "Vi =");
+    fscanf_s(file, "Vi =");
     for (i = 0; i < n; i++)
     {
-        fscanf_s(handle, " %lf", &V[i]);
+        fscanf_s(file, " %lf", &V[i]);
     }
-    fscanf_s(handle, "V;\n");
+    fscanf_s(file, "V;\n");
 
     VI = (double*)malloc(n * sizeof(double)); // 含鞍点电极电位
-    fscanf_s(handle, "Vi =");
+    fscanf_s(file, "Vi =");
     for (i = 0; i < n; i++)
     {
-        fscanf_s(handle, " %lf", &VI[i]);
+        fscanf_s(file, " %lf", &VI[i]);
     }
-    fscanf_s(handle, "V;\n");
+    fscanf_s(file, "V;\n");
 
 
     dr = (double*)malloc((n) * sizeof(double)); // dr
-    fscanf_s(handle, "r =");
+    fscanf_s(file, "r =");
     for (i = 0; i < n; i++)
     {
-        fscanf_s(handle, " %lf", &dr[i]);
+        fscanf_s(file, " %lf", &dr[i]);
     }
-    fscanf_s(handle, "mm;\n");
+    fscanf_s(file, "mm;\n");
 
 
     _M = (int*)malloc((n) * sizeof(int)); // dr
-    fscanf_s(handle, "M =");
+    fscanf_s(file, "M =");
     for (i = 0; i < n; i++)
     {
-        fscanf_s(handle, " %d", &_M[i]);
+        fscanf_s(file, " %d", &_M[i]);
     }
-    fscanf_s(handle, ";\n");
+    fscanf_s(file, ";\n");
 
-    fscanf_s(handle, "epsilon =%lf V;NST = %d;INS = %d.\n", &epsilon, &NST, &INS);
+    fscanf_s(file, "epsilon =%lf V;NST = %d;INS = %d.\n", &epsilon, &NST, &INS);
 
-    if (fscanf_s(handle, "%d\n", &tmp) == 1 && tmp == 3)
+    if (fscanf_s(file, "%d\n", &tmp) == 1 && tmp == 3)
     {
-        fscanf_s(handle, "dengweixian:%d V\n", &V1);
+        V1 = new int();
+        fscanf_s(file, "dengweixian:%d V\n", &V1[0]);
     }
     else
     {
         V1 = (int*)malloc((n + 10) * sizeof(int)); // 等位线
-        fscanf_s(handle, "dengweixian:");
+        fscanf_s(file, "dengweixian:");
         for (i = 0; i < n + 10; i++)
         {
-            fscanf_s(handle, "%d", &V1[i]);
-            count = count++;
-            if (feof(handle))
+            fscanf_s(file, "%d", &V1[i]);
+            count1 = count1++;
+            if (feof(file))
             {
                 break;
             }
         }
     }
 
-    fclose(handle);
+    fclose(file);
 
     // 打印读取到的数据，可根据需要自行调整
     printf("delta = %.1lf mm\n", delta);
@@ -295,18 +297,237 @@ int readdata2(const char* filepath)
 
     if (tmp == 3)
     {
-        printf("等位线间隔：%d V\n", V1);
+        printf("等位线间隔：%d V\n", V1[0]);
     }
     else
     {
         printf("等位线间隔:");
-        for (i = 0; i < count; i++)
+        for (i = 0; i < count1; i++)
         {
             printf(" %d", V1[i]);
         }
     }
-
-
-
     return 0;
+}
+
+
+
+void writedata(FILE* file, Grid_Array** grid1, Grid_Array** grid2, Iteration_Process* head1,Iteration_Process* head2)
+{
+    //输出基本信息
+    int i;
+    fprintf(file, "像管类型: %d类像管 \n", mode);
+    fprintf(file, "电极尺寸δ = %.1lf mm\n", delta);
+    fprintf(file, "电极个数n = %d\n", n);
+    fprintf(file, "电极间距Zi = ");
+    if (mode == 1)
+    {
+        for (i = 0; i < n; i++)
+        {
+            fprintf(file, "%.1lf ", dz[i]);
+        }
+    }
+    else
+    {
+        for (i = 0; i < n + 1; i++)
+        {
+            fprintf(file, "%.1lf ", dz[i]);
+        }
+    }
+    fprintf(file, "mm\n");
+    fprintf(file, "轴向划分要求Ni = ");
+    if (mode == 1)
+    {
+        for (i = 0; i < n; i++)
+        {
+            fprintf(file, "%d ", _N[i]);
+        }
+    }
+    else
+    {
+        for (i = 0; i < n + 1; i++)
+        {
+            fprintf(file, "%d ", _N[i]);
+        }
+    }
+    
+    fprintf(file, "\n");
+
+    fprintf(file, "电极电压Vi = ");
+    for (i = 0; i < n; i++)
+    {
+        fprintf(file, "%.1lf ", V[i]);
+    }
+    fprintf(file, "V\n");
+
+    fprintf(file,"含鞍点电压Vi = ");
+    for (i = 0; i < n; i++)
+    {
+        fprintf(file, "%.1lf ", VI[i]);
+    }
+    fprintf(file, "V\n");
+
+    if (mode == 2)
+    {
+        fprintf(file, "垂直间距r = ");
+        for (i = 0; i < n - 1; i++)
+        {
+            fprintf(file, " %.1lf", dr[i]);
+        }
+        fprintf(file, "mm;\n");
+    }
+    else
+    {
+        fprintf(file, "垂直间距r1 = %lf mm, r2 = %lf mm\n", r1, r2);
+    }
+    
+
+    if (mode == 2)
+    {
+        fprintf(file, "径向划分要求M = ");
+        for (i = 0; i < n - 1; i++)
+        {
+            fprintf(file, " %d", _M[i]);
+        }
+        fprintf(file, ";\n");
+    }
+    else
+    {
+        fprintf(file, "径向划分要求M1 = %d, M2 = %d\n", M1, M2);
+    }
+    
+
+
+    fprintf(file, "迭代精度ε = %.7lf V\n", epsilon);
+
+    fprintf(file, "输出电位间隔数NST = %d\n", NST);
+
+    fprintf(file, "轴上电位插值步长数INS = %d\n", INS);
+
+    if (tmp == 3)
+    {
+        fprintf(file, "等宽扫描等位线间隔：%d V\n", V1[0]);
+    }
+    else
+    {
+        fprintf(file, "给定扫描等位线间隔:");
+        for (i = 0; i < count1; i++)
+        {
+            fprintf(file, " %d", V1[i]);
+        }
+    }
+    fprintf(file, "\n");
+    fprintf(file, "总网格数M = %d, N = %d\n\n", M, N);
+
+    //输出网格点坐标
+    //计算轴向坐标z
+    double* z = new double[N];
+    z[0] = 0;
+    for (i = 1; i < N; i++)
+    {
+        if (z[1] == 0)
+        {
+            z[1] = grid1[M - 1][2].h1;
+        }
+        z[i] = z[i - 1] + grid1[M-1][i - 1].h2;
+    }
+
+    fprintf(file, "网格点坐标：\n         轴向坐标 ");
+    for (i = 0; i < N; i++)
+    {
+        fprintf(file, "%6.2lf  ", z[i]);
+    }
+    fprintf(file, "\n径向坐标\n");
+    for (i = 0; i < M; i++)
+    {
+        for (int j = 0; j < N + 1; j++)
+        {
+            {
+                if (j == 0)
+                {
+                    if (grid1[0][M - 1].r == 0)
+                    {
+                        if (grid1[1][M - 1].r == 0)
+                        {
+                            grid1[1][M - 1].r = grid1[2][M - 1].r + grid1[2][M - 1].h1;
+                        }
+                        grid1[0][M - 1].r = grid1[1][M - 1].r + delta;
+                    }
+                    fprintf(file, "%6.2lf            ", grid1[i][M-1].r);
+                }
+                else if (j != N)
+                {
+                    fprintf(file, "   +    ");
+                }
+                else
+                {
+                    fprintf(file, "   +   \n");
+                }
+            }
+        }
+    }
+
+    //打印无鞍点网格
+    fprintf(file, "\n\n无鞍点网格：\n");
+    //打印迭代链表
+    fprintf(file, "\n迭代相关信息：\n");
+    fprintf(file, "迭代次数: %d 次\n", iteration_times_1);
+    fprintf(file, "每次迭代的加速因子ω，迭代精度（最大残差）和平均残差:\n");
+    fprintf(file, "迭代轮次          加速因子ω          迭代精度          平均残差:\n");
+    Iteration_Process* p;
+    p = head1;
+    p = p->next;
+    for (i = 0; i < iteration_times_1; i++)
+    {
+        fprintf(file, "%2d轮%2d次             %.7lf         %.7lf         %.7lf\n", p->round,p->times, p->omega_r, p->max_res, p->avg_res);
+        if (p->next != NULL)
+        {
+            p = p->next;
+        }
+        
+    }
+
+
+    //打印网格电位
+    fprintf(file, "\n网格电位：\n");
+    for (int i = 0; i < M; i++)
+    {
+        for (int j = 0; j < N; j++)
+        {
+            fprintf(file, "%11.7f ", grid1[i][j].voltage); 
+        }
+        fprintf(file,"\n");
+    }
+            
+    //打印有鞍点网格
+    fprintf(file, "\n\n有鞍点网格：\n");
+    //打印迭代链表
+    fprintf(file, "\n迭代相关信息：\n");
+    fprintf(file, "迭代次数: %d 次\n", iteration_times_1);
+    fprintf(file, "每次迭代的加速因子ω，迭代精度（最大残差）和平均残差:\n");
+    fprintf(file, "迭代次数          加速因子ω          迭代精度          平均残差:\n");
+    Iteration_Process* q;
+    q = head2;
+    q = q->next;
+    for (i = 0; i < iteration_times_2; i++)
+    {
+        fprintf(file, "%2d轮%2d次             %.7lf         %.7lf         %.7lf\n", q->round, q->times, q->omega_r, q->max_res, q->avg_res);
+        if (q->next != NULL)
+        {
+             q = q->next;
+        }
+
+    }
+
+
+    //打印网格电位
+    fprintf(file, "\n网格电位：\n");
+    for (int i = 0; i < M; i++)
+    {
+        for (int j = 0; j < N; j++)
+        {
+            fprintf(file, "%11.7f ", grid1[i][j].voltage);
+        }
+        fprintf(file, "\n");
+    }
 }
