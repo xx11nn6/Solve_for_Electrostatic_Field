@@ -19,4 +19,18 @@
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Grid_Array.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Grid_Initialize.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Iteration.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="File_Operation.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>

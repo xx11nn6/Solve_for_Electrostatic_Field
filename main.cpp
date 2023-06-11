@@ -1,60 +1,57 @@
 #include <iostream>
 #include <malloc.h>
+#include<stdlib.h>
 #include <numeric>
 #include <iomanip>
 #include <graphics.h>		// 引用 EasyX 图形库
 #include <conio.h>
-
+#include "Grid_Array.h"			//定义网格，全局变量M、N和释放网格内存函数
+#include "Grid_Initialize.h"	//用于初始化两类像管
+#include "Iteration.h"			//包括SOR迭代，加速因子计算，残差计算和迭代精度判断函数
+#include "File_Operation.h"		//包括文件的读写
 using namespace std;
 
-struct Grid_Array  //定义电场网格结构
-{
-	int k;  //存储迭代次数k
-	double voltage;  //存储各网格点迭代k次的电压
-	double voltage_before;  //存储上一次迭代的电压
-	bool is_margin;  //判断网格点是否是边界，1表示是边界
-	bool is_inside;  //判断网格点是否在边界内部
-	bool on_axis;  //判断是否在轴上；
-	double h1, h2, h3, h4;  //存储网格点到周围的距离
-	double r;  //存储网格点的径向距离
-};
-
-
 //定义全局变量
-int M, N;//网数M*N
-int mode = 1;  //定义工作模式，1为第一类像管，2为第二类像管
-//声明函数
-void grid_initialize_mode_1(Grid_Array** grid, double screen_voltage, int n, double* dz, int* _N, double* V, double r1, double r2, int M1, int M2, double delta);
-void grid_initialize_mode_2(Grid_Array** grid, double screen_voltage, int n, double* dz, double* dr, int* _N, int* _M, double* V, double delta);
-double residual(Grid_Array** grid);
-double SOR(Grid_Array** grid, double omega);
-double select_accelerator_factor(Grid_Array** grid);
-double convergence_criteria(Grid_Array** grid);
-void free_grid(Grid_Array** grid);
 void potential_line(Grid_Array** grid, int n, int* _N, int M1, int M2);
 void paint(int k, Grid_Array** grid);
 int scan(double V, Grid_Array** grid);
 void paint_all(int n, int M1, int M2, int M, int N, Grid_Array** grid, double z0, double r0, double* dz, double delta);
 double* V_r, * V_z; //存扫描点坐标
-double* z1, * r1;
+double* zi, * ri;
+
+int mode;			 //工作模式1为一类，2为二类
+int M;			  	 //网格数MN
+int N;
+double delta;		 // 电极厚度
+int n;				 // 电极数（包含荧光屏，不包含阴极）
+double* dz;           // 每个电极的轴向间距，两类像管均用到此变量
+int* _N;              // 相邻电极间划分步长(通用)
+double* V;            // 各个电极电压
+double* VI;           // 含鞍点电极电位(通用)
+int M1, M2;           // 竖直方向格数划分的要求，第一类像管使用此变量
+double r1, r2;         // r2为电极插入电场的深度，r1为电极底端到轴的距离(第一类像管使用)
+int* _M;              // 电极之间径向所需要划分的网格数，第二类像管使用此变量
+double* dr;           // 电极内孔半径(第二类)
+double epsilon;       // 迭代精度(通用)
+double omega;		 // 加速因子ω
+int NST;              // 输出打印空间电位时网格点间隔数(通用)
+int INS;              // 轴上电位做等距插值时步长数(通用)
+int* V1;              // 要求扫描等电位线的电位间隔或者电位值(通用)
+int i;                // 循环用参数
+FILE* handle;
+errno_t err;
+// 一个计数器，判断扫描等位线的条数
+
+
+
 
 int main()
 {
+#if 0
 	//初始化
 	mode = 2;
-	///以下为两类像管通用参数
-	double V_s = 100;				//定义荧光屏电压为100V
-	int n = 7;						//定义电极数（包含荧光屏，不包含阴极）
-	double delta = 0.5;				//定义电极宽度δ
-	double V[6];					//定义各个电极电压
-	int* _N = new int[n+mode-1];			//电极之间横向所需要划分的网格数，加下划线为了与全局变量N区别
-	double* dz = new double[n+mode-1];		//定义每个电极的轴向间距，两类像管均用到此变量						
-	int _M[6];						//电极之间径向所需要划分的网格数，第二类像管使用此变量
-	int M1, M2;					    //竖直方向格数划分的要求，第一类像管使用此变量				    
-	double dr[6];					//定义电极径向间距，第二类像管用此变量
+	double V_s;		//荧光屏电压
 	//以下为第一类像管用到的变量
-	double z0 = 56.4, r0 = 32;		//定义径向和轴向的宽度
-	double r2 = 12, r1 = r0 - r2;   //r2为电极插入电场的深度，r1为电极底端到轴的距离
 	//////////////////注意！！M*N为网数，而_N与_M是格数///////////////////////////////
 	if (mode == 1)  //第一类像管的参数
 	{
@@ -66,7 +63,6 @@ int main()
 		//计算总网数M与N
 		M = M1 + M2 + 1;  //格数是M1+M2,网数还要加一
 		N = _N[0] + _N[1] + _N[2] + _N[3] + _N[4] + _N[5] + _N[6] + n; //有_N+n-1个格数，网数需要加一
-		//grid_initialize_mode_1(grid, V_s, n, dz, _N, V, r1, r2, M1, M2, delta);
 	}
 
 	else if (mode == 2)  //第二类像管参数
@@ -80,12 +76,7 @@ int main()
 		//计算总网数
 		M = _M[0] + _M[1] + _M[2] + _M[3] + _M[4] + _M[5] + n;
 		N = _N[0] + _N[1] + _N[2] + _N[3] + _N[4] + _N[5] + _N[6] +_N[7]+ 1;
-		//grid_initialize_mode_2(grid, V_s, n, dz, dr, _N, _M, V, delta);
 	}
-
-	double omega;  //定义加速因子ω
-	double epsilon = 0.0005;  //迭代精度为0.0005
-
 
 
 	//new用于动态分配内存
@@ -130,636 +121,111 @@ int main()
 	//paint_all(n, M1, M2, M, N, grid, z0, r0, dz, delta);
 	system("pause");
 	free_grid(grid);//运行结束，释放内存
-	return 0;
-}
+#endif
+	
+	//读文件捏
+	if ((err = fopen_s(&handle, "test2.txt", "rt")) != 0)
+	{
+		printf("找不到文件！错误码：%d\n", err);
+		return -1;
+	}
 
 
+	fopen_s(&handle, "test2.txt", "rt");
+	if (fscanf_s(handle, "%d\n", &mode) == 1 && mode == 2)
+	{
+		readdata2("test2.txt");
+		fclose(handle);
+	}
+	else
+	{
+		readdata1("test2.txt");
+		fclose(handle);
+	}
 
+	double V_s = V[n - 1];  //定义荧光屏电压
+	//计算M和N
+	if (mode == 1)
+	{
+		M = M1 + M2 + 1;
+		N = 0;
+		for (int j = 0; j < n; j++)
+		{
+			N = N + _N[j] + 1;
+		}
+	}
+	else
+	{
+		M = 1;
+		N = 1;
+		for (int i = 0; i < n-1; i++)
+		{
+			M = M + _M[i] + 1;
+		}
+		for (int i = 0; i < n + 1; i++)
+		{
+			N = N + _N[i];
+		}
+	}
 
-//用于初始化第一类像管的电场网格
-void grid_initialize_mode_1(Grid_Array** grid, double screen_voltage, int n, double* dz, int* _N, double* V, double r1, double r2, int M1, int M2, double delta)
-//输入电场网格，荧光屏电压、电极个数n、网格间距（传入数组dz）、水平方向网格划分要求（传入数组_N）、电极电压（数组V）
-//电极底到轴距r1、电极深度r2，垂直方向网格划分要求M1,M2、电极宽度delta
-{
-	//遍历网格进行初始化
+	//创建网格grid
+	//new用于动态分配内存
+	//例如：int* p = new int[10];
+	//这句话表示分配10个int类型的空间，返回首地址存储在p中
+	//因此可以用来创建一个可变大小的数组
+	//要想创建二维数组，则必须使用双重指针
+	Grid_Array** grid = new Grid_Array * [M];  //第一层指针指向行
 	for (int i = 0; i < M; i++)
 	{
-		for (int j = 0; j < N; j++)
-		{
-			grid[i][j].voltage = 0;  //初始电位全部赋零
-			grid[i][j].is_margin = false;  //初始全部设置为非边界
-			grid[i][j].is_inside = true;  //第一类像管除边界，其余全部参与迭代
-			grid[i][j].on_axis = false;  //初始设置为非轴上点
-			grid[i][j].k = 0;
-
-			//设置垂直间距h3,h4
-			//设置第一行
-			if (i == 0)
-			{
-				grid[i][j].h4 = 0;
-				grid[i][j].h3 = r2 / M2;
-				grid[i][j].r = r1 + r2;
-			}
-			//设置1~M2行
-			else if (i < M2)
-			{
-				grid[i][j].h4 = r2 / M2;
-				grid[i][j].h3 = grid[i][j].h4;
-				grid[i][j].r = r1 + r2 - ((r2 * i) / M2);
-			}
-			//设置M2行
-			else if (i == M2)
-			{
-				grid[i][j].h4 = r2 / M2;
-				grid[i][j].h3 = r1 / M1;
-				grid[i][j].r = r1;
-			}
-			//设置M2~M1行
-			else if (i < (M2 + M1))
-			{
-				grid[i][j].h4 = r1 / M1;
-				grid[i][j].h3 = grid[i][j].h4;
-				grid[i][j].r = r1 - ((r1 * (i - M2)) / M1);
-			}
-			//设置轴上点
-			else
-			{
-				grid[i][j].h3 = 0;
-				grid[i][j].h4 = r1 / M1;
-				grid[i][j].r = 0;
-				grid[i][j].on_axis = true;
-			}
-
-			//第一列（光阴极）
-			if (j == 0)
-			{
-				grid[i][j].voltage = 0;
-				grid[i][j].h1 = 0;
-				grid[i][j].h2 = dz[0] / (_N[0]);
-				grid[i][j].is_margin = true;
-			}
-			else
-			{
-				//后面几列需要用循环判断
-				int sum = _N[0];
-				int k = 0;
-				while (k < n)
-				{
-					if (j < sum)
-					{
-						if (i == 0)  //如果i=0（第一行）直接做封闭边界处理
-						{
-							grid[i][j].is_margin = true;
-							if (k == 0)  //若在阴极和第一个电极间，线性插值计算边界电压
-							{
-								grid[i][j].voltage = V[0] * j / _N[0];
-							}
-							else if (k != (n - 1))  //若不在最后一个电极到荧光屏区间
-							{
-								grid[i][j].voltage = V[k - 1] + (V[k] - V[k - 1]) * (_N[k] + j - sum) / _N[k];
-							}
-							else  //最后一个电极到荧光屏区间
-							{
-								grid[i][j].voltage = V[k - 1] + (screen_voltage - V[k - 1]) * (_N[k] + j - sum) / _N[k];
-							}
-						}
-						grid[i][j].h1 = dz[k] / _N[k];
-						grid[i][j].h2 = dz[k] / _N[k];
-						break;
-					}
-					else if (j == sum && (k != (n - 1))) //在电极左侧且不在荧光屏
-					{
-						if (i <= M2)  //若高度在电极深度范围内
-						{
-							grid[i][j].is_margin = true;
-							grid[i][j].voltage = V[k];
-						}
-						grid[i][j].h1 = dz[k] / _N[k];
-						grid[i][j].h2 = delta;
-						break;
-					}
-					else if (j == (sum + 1) && (k != (n - 1)))  //在电极右侧且不在荧光屏
-					{
-						if (i <= M2)  //若高度在电极深度范围内
-						{
-							grid[i][j].is_margin = true;
-							grid[i][j].voltage = V[k];
-						}
-						grid[i][j].h1 = delta;
-						grid[i][j].h2 = dz[k + 1] / _N[k + 1];
-						break;
-					}
-
-					else if (k == (n - 1)) //最后一组
-					{
-						if (j == sum) //在荧光屏上
-						{
-							grid[i][j].h1 = dz[k] / _N[k];
-							grid[i][j].h2 = 0;
-							grid[i][j].is_margin = true;
-							break;
-						}
-					}
-					else  //若越过第一个电极
-					{
-						k += 1;
-						sum = sum + _N[k] + 1;
-						continue;
-					}
-				}
-			}
-
-
-			//将初始迭代第1次电压设置与第0次相同
-			for (int i = 0; i < M; i++)
-			{
-				for (int j = 0; j < N; j++)
-				{
-					grid[i][j].voltage_before = grid[i][j].voltage;
-				}
-			}
-		}
+		grid[i] = new Grid_Array[N];  //第二层指向列
 	}
 
-	//设置荧光屏电位和边界情况
-	for (int i = 0; i < M; i++)
+	//初始化像管
+	if (mode == 1)
 	{
-		grid[i][N - 1].voltage = screen_voltage;
-		grid[i][N - 1].is_margin = true;
-		grid[i][N - 1].voltage_before = screen_voltage;
+		grid_initialize_mode_1(grid, V_s, n, dz, _N, V, r1, r2, M1, M2, delta);  //初始化第一类像管
 	}
-
-	//设置边界内部
-	for (int i = 1; i < M ; i++)
+	else
 	{
-		for (int j = 1; j < (N - 1); j++)
-		{
-			grid[i][j].is_inside = true;
-		}
-	}
-}
-
-
-
-//用于初始化第二类像管的电场网格
-void grid_initialize_mode_2(Grid_Array** grid, double screen_voltage, int n, double* dz, double* dr, int* _N, int* _M, double* V, double delta)
-//输入电场网格，荧光屏电压、电极个数n、网格轴向间距（传入数组dz）、径向间距dr、水平方向网格划分要求（传入数组_N）、垂直方向网格划分要求_M、电极电压（数组V）、电极宽度delta
-{
-	//分块 必须有数组存储网格数划分要求的累加和，还有轴向距离
-	int* Ms = new int[n-1];
-	int* Ns = new int[n+1];
-	double* rs = new double[n - 1];
-
-	Ms[0] = _M[n - 2] + 1;  //本来是_M[0]的，但是没想到吧哈哈！要求网格划分和坐标系是反着的......
-	Ns[0] = _N[0];
-	rs[0] = dr[0] + delta;
-	for (int i = 1; i < (n+1); i++)
-	{
-		if (i < (n - 1))
-		{
-			Ms[i] = _M[n - i - 2] + Ms[i - 1] + 1;
-			Ns[i] = _N[i] + Ns[i - 1];
-			rs[i] = dr[i] + rs[i - 1] + delta;
-		}
-		else
-		{
-			Ns[i] = _N[i] + Ns[i - 1];
-		}
-	}
-	//先遍历网格，把所有点置零
-	for (int i = 0; i < M; i++)
-	{
-		for (int j = 0; j < N; j++)
-		{
-			grid[i][j].voltage = 0.0;  //初始电位全部赋零
-			grid[i][j].is_margin = false;  //初始全部设置为非边界
-			grid[i][j].on_axis = false;  //初始设置为非轴上点
-			grid[i][j].is_inside = false;//初始设置为非内部
-			grid[i][j].k = 0;
-			grid[i][j].r = 0;
-			grid[i][j].h1 = 0;
-			grid[i][j].h2 = 0;
-			grid[i][j].h3 = 0;
-			grid[i][j].h4 = 0;
-		}
+		grid_initialize_mode_2(grid, V_s, n, dz, dr, _N, _M, V, delta);
 	}
 
-	//再次遍历，进行初始化和边界设置
-	for (int k = 0; k < (n-1); k++)
-		//分块处理，每一块是两个电极间
-	{
-		//从上往下 第一个电极到第二个之间
-		if (k == 0)
-		{
-			for (int i = 0; i < Ms[k]; i++)
-			{
-				for (int j = 0; j < N; j++)
-				{
-					if (i == 0 || i == 1)  //如果是第一行或是第二行
-					{
-						if ((j >= Ns[n - k - 2]) && (j <= Ns[n - k - 1]))  //如果在电极区间
-						{
-							grid[i][j].voltage = V[n - k - 2];	//设置电极电压
-							grid[i][j].is_margin = true;
-						}
-						else if (j > Ns[n - k - 1] && j < (N - 1))  //如果在电极到荧光屏间
-						{
-							if (i == 0)  //设置第一行为边界插值
-							{
-								grid[i][j].voltage = V[n - k - 2] + double(j - Ns[n - k - 1]) / (Ns[n - k] - Ns[n - k - 1]) * (screen_voltage - V[n - k - 2]);  //行间线性插值计算电压
-								grid[i][j].is_margin = true;
-							}
-							else if (i == 1) //设置第二行
-							{
-								grid[i][j].is_inside = true;
-								grid[i][j].r = rs[n - k - 2] - delta;
-								grid[i][j].h1 = dz[n - k] / _N[n - k];
-								grid[i][j].h2 = grid[i][j].h1;
-								grid[i][j].h3 = dr[n - k - 2] / _M[n - k - 2];
-								grid[i][j].h4 = delta;
-							}
-						}
-					}
-
-					else if ((i > 1) && (i < Ms[k]))  //如果是第三行到下一个电极间
-					{
-						if (j == Ns[n - k - 2])  //如果在两电极间，垂直补充边界
-						{
-							float r;  //网格点的轴向距离r
-							r = rs[n - k - 2] - (double(i - 1) / _M[n - k - 2] * dr[n - k - 2]) - delta;
-							grid[i][j].voltage = V[n - k - 2] + (V[n - k - 3] - V[n - k - 2]) * \
-								log(r / (rs[n - k - 2] - delta)) / log(rs[n - k - 3] / rs[n - k - 2]);  //对数插值，给我写晕了
-							grid[i][j].is_margin = true;
-							grid[i][j].r = r;
-						}
-						else if (j > Ns[n - k - 2] && j < (N - 1))  //设置边界内部
-						{
-							grid[i][j].is_inside = true;
-							grid[i][j].h3 = dr[n - k - 2] / _M[n - k - 2];
-							grid[i][j].h4 = grid[i][j].h3;
-							grid[i][j].r = rs[n - k - 2] - (double(i - 1) / _M[n - k - 2] * dr[n - k - 2]) - delta;
-							for (int l = 0; l < (k + 2); l++)  //轴向划分k+2个区域
-							{
-								if (j > Ns[n - k + l - 2] && j < Ns[n - k + l - 1])
-								{
-									grid[i][j].h1 = dz[n - k + l - 1] / _N[n - k + l - 1];
-									grid[i][j].h2 = grid[i][j].h1;
-								}
-								else if (j == Ns[n - k + l - 1] && j != (N - 1))  //若在两个划分区间中，且不在荧光屏上
-								{
-									grid[i][j].h1 = dz[n - k + l - 1 ] / _N[n - k + l - 1];
-									grid[i][j].h2 = dz[n - k + l ] / _N[n - k + l ];
-								}
-							}
-						}
-					}
-					else
-					{
-						break;
-					}
-				}
-			}
-		}
-
-		//第二个到第n-1个电极
-		else  if (k != (n - 2))
-		{
-			for (int i = Ms[k - 1]; i < Ms[k]; i++)
-			{
-				for (int j = Ns[n - k - 2]; j < (N - 1); j++)
-				{
-					if (i == Ms[k - 1])  //如果是电极行
-					{
-						if ((j >= Ns[n - k - 2]) && j <= (Ns[n - k - 1]))  //如果在电极区间
-						{
-							grid[i][j].voltage = V[n - k - 2];	//设置电极电压
-							grid[i][j].is_margin = true;
-						}
-						else
-						{
-							grid[i][j].is_inside = true;
-							grid[i][j].h3 = delta;
-							grid[i][j].h4 = dr[n - k - 1] / _M[n - k - 1];
-							grid[i][j].r = rs[n - k - 2];
-						}
-					}
-					else if (i == (Ms[k - 1] + 1))//如果是电极下一行
-					{
-						if ((j >= Ns[n - k - 2]) && (j <= Ns[n - k - 1]))  //如果在电极区间
-						{
-							grid[i][j].voltage = V[n - k - 2];	//设置电极电压
-							grid[i][j].is_margin = true;
-						}
-						else
-						{
-							grid[i][j].is_inside = true;
-							grid[i][j].h3 = dr[n - k - 2] / _M[n - k - 2];
-							grid[i][j].h4 = delta;
-							grid[i][j].r = rs[n - k - 2] - delta;
-						}
-					}
-					else  //如果不是电极两行
-					{
-						if (j == Ns[n - k - 2])//如果在两电极列，垂直补充边界
-						{
-							{
-								grid[i][j].voltage = V[n - k - 2];	//设置电极电压
-								float r;  //网格点的轴向距离r
-								r = rs[n - k - 2] - (double(i - Ms[k-1] - 1) / _M[n - k - 2] * dr[n - k - 2]) - delta;
-								grid[i][j].voltage = V[n - k - 2] + (V[n - k - 3] - V[n - k - 2]) * \
-									log(r / (rs[n - k - 2] - delta)) / log(rs[n - k - 3] / rs[n - k - 2]);  //对数插值
-								grid[i][j].is_margin = true;
-								grid[i][j].r = r;
-							}
-						}
-						else
-						{
-							grid[i][j].is_inside = true;
-							grid[i][j].h3 = dr[n - k - 2] / _M[n - k - 2];
-							grid[i][j].h4 = grid[i][j].h3;
-							grid[i][j].r = rs[n - k - 2] - (double(i - Ms[k - 1] - 1) / _M[n - k - 2] * dr[n - k - 2]) - delta;
-						}
-							
-					}
-
-					for (int l = 0; l < (k + 2); l++)  //轴向划分k+2个区域
-					{
-						if (j > Ns[n - k + l - 2] && j < Ns[n - k + l - 1])
-						{
-							grid[i][j].h1 = dz[n - k + l - 1] / _N[n - k + l - 1];
-							grid[i][j].h2 = grid[i][j].h1;
-						}
-						else if (j == Ns[n - k + l - 1] && j != (N - 1))  //若在两个划分区间中，且不在荧光屏上
-						{
-							grid[i][j].h1 = dz[n - k + l - 1] / _N[n - k + l - 1];
-							grid[i][j].h2 = dz[n - k + l ] / _N[n - k + l ];
-						}
-					}
-				}
-			}
-		}
-
-		//如果在最后一个电极区间
-		else if (k == (n - 2))
-		{
-			for (int i = Ms[k - 1]; i <= Ms[k]; i++)
-			{
-				for (int j = 0; j < (N - 1); j++)
-				{
-					if (i == Ms[k - 1])  //如果是电极行
-					{
-						if ((j >= Ns[n - k - 2]) && j <= (Ns[n - k - 1]))  //如果在电极区间
-						{
-							grid[i][j].voltage = V[n - k - 2];	//设置电极电压
-							grid[i][j].is_margin = true;
-						}
-						else if (j > Ns[n - k - 1])
-						{
-							grid[i][j].is_inside = true;
-							grid[i][j].h3 = delta;
-							grid[i][j].h4 = dr[n - k - 1] / _M[n - k - 1];
-							grid[i][j].r = rs[n - k - 2];
-						}
-					}
-					else if (i == (Ms[k - 1] + 1))//如果是电极下一行
-					{
-						if (j > 0 && j < Ns[n - k - 2])	//线性插值计算电压
-						{
-							grid[i][j].voltage = double(j) / _N[0] * V[0];
-							grid[i][j].is_margin = true;
-						}
-						else if ((j >= Ns[n - k - 2]) && (j <= Ns[n - k - 1]))  //如果在电极区间
-						{
-							grid[i][j].voltage = V[n - k - 2];	//设置电极电压
-							grid[i][j].is_margin = true;
-						}
-						else if (j != 0)
-						{
-							grid[i][j].is_inside = true;
-							grid[i][j].h3 = dr[n - k - 2] / _M[n - k - 2];
-							grid[i][j].h4 = delta;
-							grid[i][j].r = rs[n - k - 2] - delta;
-						}
-					}
-					else  //如果不是电极两行
-					{
-						if (j != 0)
-						{
-							grid[i][j].is_inside = true;
-							if (i != (M - 1))
-							{
-								grid[i][j].h3 = dr[n - k - 2] / _M[n - k - 2];
-							}
-							grid[i][j].h4 = dr[n - k - 2] / _M[n - k - 2];
-							grid[i][j].r = rs[n - k - 2] - (double(i - Ms[k - 1] - 1) / _M[n - k - 2] * dr[n - k - 2]) - delta;
-						}
-					}
-
-					for (int l = 0; l < (k + 2); l++)  //轴向划分k+3个区域
-					{
-						if (j > 0 && j < Ns[0])
-						{
-							grid[i][j].h1 = dz[0] / _N[0];
-							grid[i][j].h2 = grid[i][j].h1;
-						}
-						else if (j == Ns[0])
-						{
-							grid[i][j].h1 = dz[0] / _N[0];
-							grid[i][j].h2 = dz[1] / _N[1];
-						}
-						else if (j > Ns[n - k + l - 2] && j < Ns[n - k + l - 1])
-						{
-							grid[i][j].h1 = dz[n - k + l - 1] / _N[n - k + l - 1];
-							grid[i][j].h2 = grid[i][j].h1;
-						}
-						else if (j == Ns[n - k + l - 1] && j != (N - 1))  //若在两个划分区间中，且不在荧光屏上
-						{
-							grid[i][j].h1 = dz[n - k + l - 1] / _N[n - k + l - 1];
-							grid[i][j].h2 = dz[n - k + l] / _N[n - k + l];
-						}
-					}
-				}
-			}
-		}
-
-		//设置光阴极和荧光屏
-		for (int i = 0; i < M; i++)  
-		{
-			grid[i][0].voltage = 0;
-			grid[i][0].is_margin = true;
-			grid[i][N-1].voltage = screen_voltage;
-			grid[i][N-1].is_margin = true;
-		}
-
-		//设置轴上点
-		for (int j = 1; j < (N - 1); j++)
-		{
-			grid[M - 1][j].on_axis = true;
-			grid[M - 1][j].is_inside = true;
-		}
-
-		//将初始迭代第1次电压设置与第0次相同
-		for (int i = 0; i < M; i++)
-		{
-			for (int j = 0; j < N; j++)
-			{
-				grid[i][j].voltage_before = grid[i][j].voltage;
-			}
-		}
-	}
-}
-
-
-//用于计算残差的均值
-double residual(Grid_Array** grid)
-{
-	double sum = 0;
-	double diff;
-	double res;
-
-	for (int i = 0; i < M; i++)
-	{
-		for (int j = 0; j < N; j++)
-		{
-			diff = abs(grid[i][j].voltage - grid[i][j].voltage_before);
-			sum += diff;
-		}
-	}
-
-	res = sum / (M * N);
-	return res;
-}
-
-
-//进行一次SOR迭代
-double SOR(Grid_Array** grid, double omega)
-{
-	for (int i = 0; i < M; i++)
-	{
-		for (int j = 0; j < N; j++)
-		{
-			if (grid[i][j].is_margin == false && grid[i][j].is_inside == true)//判断是否是边界及是否在边界内部，不是边界并且在内部则参与迭代
-			{
-				
-				double c1, c2, c3, c4, c0;
-				//为了公式好看，先用变量暂存
-				double phi = grid[i][j].voltage;  //迭代前的电压φ[k]
-				double phi_after;  //迭代后的电位φ[k+1]
-				double r = grid[i][j].r;
-				double h1 = grid[i][j].h1;
-				double h2 = grid[i][j].h2;
-				double h3 = grid[i][j].h3;
-				double h4 = grid[i][j].h4;
-				if (grid[i][j].on_axis == false)  //非轴上点的迭代
-				{
-					c1 = 2 / (h1 * (h1 + h2));
-					c2 = 2 / (h2 * (h1 + h2));
-					c3 = (2 * r - h4) / (r * h3 * (h3 + h4));
-					c4 = (2 * r + h3) / (r * h4 * (h3 + h4));
-					c0 = c1 + c2 + c3 + c4;
-					//先进行一次普通（赛德尔-利伯曼）迭代
-					phi_after = (c1 * grid[i][j - 1].voltage + c2 * grid[i][j + 1].voltage \
-						+ c3 * grid[i + 1][j].voltage + c4 * grid[i - 1][j].voltage) / c0;
-					//用SOR计算:φ[k+1]=φ[k]+ω(φ[k+1]_bar-φ[k])
-					phi_after = (1 - omega) * phi + omega * phi_after;
-					grid[i][j].voltage_before = phi;
-					grid[i][j].voltage = phi_after;
-					grid[i][j].k += 1;
-				}
-				else  //轴上点的迭代，其格式相同，只不过系数不同
-				{
-					c1 = 2 / (h1 * (h1 + h2));
-					c2 = 2 / (h2 * (h1 + h2));
-					c3 = 0;
-					c4 = 4 / (h4 * h4);
-					c0 = 2 * ((1 / (h1 * h2)) + (2 / (h4 * h4)));
-					//迭代没有c3项
-					phi_after = (c1 * grid[i][j - 1].voltage \
-						+ c2 * grid[i][j + 1].voltage \
-						+ c4 * grid[i - 1][j].voltage) / c0;
-					phi_after = (1 - omega) * phi + omega * phi_after;
-					grid[i][j].voltage_before = phi;
-					grid[i][j].voltage = phi_after;
-					grid[i][j].k += 1;
-				}
-			}
-			else
-			{
-				grid[i][j].voltage = grid[i][j].voltage_before;
-			}
-		}
-	}
-	return 0;
-}
-
-
-//最佳加速因子ω的选择
-double select_accelerator_factor(Grid_Array** grid)
-{
-	double E_bar;
-	double E_bar_after;
-	double lambda = 0;  //先使λ=0
-	double omega_l, mu_l, omega_m;  //ω_λ，μ_λ，ω_m
-	double omega_m_bar;  //用于两轮迭代算出的加速因子ω_m平均值
-
-	double omega = 1;  //取omega=1迭代一次
-	SOR(grid, omega);
-	omega = 1.375;
+	omega = select_accelerator_factor(grid);  //加速因子omega选取
 	do
 	{
-		lambda = 0;
-		for (int i = 0; i < 12; i++)
-		{
-			E_bar = residual(grid);  //计算第一次残差
-			SOR(grid, omega);  //迭代一次
-			E_bar_after = residual(grid);  //再次计算残差
-			if (i > 8)//最后三次迭代
-			{
-				lambda += (E_bar_after / E_bar);  //取最后三次λ相加
-			}
-		}
-		lambda /= 3;  //计算最后三次迭代λ均值
-		mu_l = (lambda + omega - 1) / (sqrt(lambda) * omega);
-		omega_l = 2 / (1 + sqrt(1 - (pow(mu_l, 2))));
-		omega_m = 1.25 * omega_l - 0.5;
-		omega_m_bar = (omega + omega_m) / 2;
-		omega = omega_m;
-		//cout << omega << endl;
-	} while (abs((omega_m_bar - omega_m) / (2 - omega_m)) >= 0.05);
-	return omega;
-}
+		SOR(grid, omega);  //进行迭代直至符合精度条件
+	} while (convergence_criteria(grid) > epsilon);
 
-
-//迭代精度判断
-double convergence_criteria(Grid_Array** grid)
-{
-	double max_error, temp;
-	max_error = 0;
+	cout << "accelerator factor omega:" << endl;  //输出加速因子
+	cout << omega << endl;
+	cout << "iteration times:" << endl;  //输出迭代次数
+	cout << grid[M - 2][N - 2].k << endl;
+	//*/
+	//输出网格电位
+	cout << "grid:" << endl;
 	for (int i = 0; i < M; i++)
 	{
 		for (int j = 0; j < N; j++)
 		{
-			if (grid[i][j].is_margin == false)//对非边界点判断
-			{
-				temp = abs(grid[i][j].voltage - grid[i][j].voltage_before);//用网格点与上一次迭代相比
-				if (temp > max_error)
-				{
-					max_error = temp;  //取所有误差中的最大值
-				}
-			}
+			cout << " " << setw(4)<< setfill(' ')  << setprecision(4) << grid[i][j].voltage_before << " ";  //setfill等函数是iomanip库中的函数，用于控制输出格式
+			//cout << "(" << setprecision(2) << grid[i][j].h3 << "," << setprecision(2) << grid[i][j].h4 << ") ";
 		}
+		cout << endl;
 	}
-	return max_error;
+
+	free(dz);
+	free(_N);
+	free(V);
+	free(VI);
+	free(dr);
+	free(_M);
+	free(V1);
+
+	return 0;
 }
 
-//使用delete来释放内存
-void free_grid(Grid_Array** grid)
-{
-	for (int i = 0; i < M; i++) {
-		delete[] grid[i];
-	}
-	delete[] grid;
-}
+
+
 
 void paint_all(int n, int M1, int M2, int M, int N, Grid_Array** grid, double z0, double r0, double* dz, double delta)
 //画电位线
@@ -768,17 +234,17 @@ void paint_all(int n, int M1, int M2, int M, int N, Grid_Array** grid, double z0
 	double z_temp1, z_temp2, V_temp1, V_temp2, t;
 	V_z = (double*)malloc(n * (M1 + M2) * sizeof(double));
 	V_r = (double*)malloc(n * (M1 + M2) * sizeof(double));
-	z1 = (double*)malloc(N * sizeof(double));
-	r1 = (double*)malloc(M * sizeof(double));
-	z1[0] = 0;
+	zi = (double*)malloc(N * sizeof(double));
+	ri = (double*)malloc(M * sizeof(double));
+	zi[0] = 0;
 	for (i = 1; i < N; i++)
 	{
-		z1[i] = z1[i - 1] + grid[0][i - 1].h2;  //累加求和，计算每一点离原点的轴向距离，等效于matlab中cumsum
+		zi[i] = zi[i - 1] + grid[0][i - 1].h2;  //累加求和，计算每一点离原点的轴向距离，等效于matlab中cumsum
 	}
-	r1[0] = 0;
+	ri[0] = 0;
 	for (i = 1; i < M; i++)
 	{
-		r1[i] = grid[i][0].r;
+		ri[i] = grid[i][0].r;
 	}
 
 	for (i = 0; i < n * (M1 + M2); i++)
@@ -832,9 +298,9 @@ int scan(double V, Grid_Array** grid)
 		{
 			if ((grid[i][j].voltage <= V && grid[i][j + 1].voltage > V) || (grid[i][j].voltage >= V && grid[i][j + 1].voltage < V))  //判断待扫描电位的位置区间
 			{
-				z = z1[j] + grid[0][j].h2 * (V - grid[i][j].voltage) / (grid[i][j + 1].voltage - grid[i][j].voltage);  //插值法计算待扫描电位位置
+				z = zi[j] + grid[0][j].h2 * (V - grid[i][j].voltage) / (grid[i][j + 1].voltage - grid[i][j].voltage);  //插值法计算待扫描电位位置
 				V_z[k] = 200 + 10 * z;
-				V_r[k] = 310 + 10 * (r1[M - 1] - r1[i]);
+				V_r[k] = 310 + 10 * (ri[M - 1] - ri[i]);
 				k++;
 			}
 		}
@@ -845,9 +311,9 @@ int scan(double V, Grid_Array** grid)
 		{
 			if ((grid[i][j].voltage <= V && grid[i + 1][j].voltage > V) || (grid[i][j].voltage >= V && grid[i + 1][j].voltage < V))
 			{
-				r = r1[i] + grid[i][0].h4 * (V - grid[i][j].voltage) / (grid[i + 1][j].voltage - grid[i][j].voltage);
-				V_z[k] = 200 + 10 * z1[j];
-				V_r[k] = 310 + 10 * (r1[M - 1] - r);
+				r = ri[i] + grid[i][0].h4 * (V - grid[i][j].voltage) / (grid[i + 1][j].voltage - grid[i][j].voltage);
+				V_z[k] = 200 + 10 * zi[j];
+				V_r[k] = 310 + 10 * (ri[M - 1] - r);
 				k++;
 			}
 		}

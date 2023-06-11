@@ -129,6 +129,12 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="File_Operation.h" />
+    <ClInclude Include="Grid_Array.h" />
+    <ClInclude Include="Grid_Initialize.h" />
+    <ClInclude Include="Iteration.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
