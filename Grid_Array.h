@@ -1,7 +1,8 @@
 #ifndef GRID_ARRAY_H  //¶¨ÒåÍø¸ñ£¬ÊÍ·Åº¯ÊıºÍÒ»Ğ©È«¾Ö±äÁ¿
 #define GRID_ARRAY_H
 
-//ÉùÃ÷È«¾Ö±äÁ¿M
+//ÉùÃ÷È«¾Ö±äÁ¿
+//¶ÁÈëÏñ¹Ü²ÎÊı
 extern int mode;			 //¹¤×÷Ä£Ê½1ÎªÒ»Àà£¬2Îª¶şÀà
 extern int M;			  	 //Íø¸ñÊıMN
 extern int N;
@@ -16,18 +17,27 @@ extern double r1,r2;         // r2Îªµç¼«²åÈëµç³¡µÄÉî¶È£¬r1Îªµç¼«µ×¶Ëµ½ÖáµÄ¾àÀë(µ
 extern int* _M;              // µç¼«Ö®¼ä¾¶ÏòËùĞèÒª»®·ÖµÄÍø¸ñÊı£¬µÚ¶şÀàÏñ¹ÜÊ¹ÓÃ´Ë±äÁ¿
 extern double* dr;           // µç¼«ÄÚ¿×°ë¾¶(µÚ¶şÀà)
 extern double epsilon;       // µü´ú¾«¶È(Í¨ÓÃ)
-extern double omega_1;		 // ¼ÓËÙÒò×Ó¦Ø£¬ÎŞ°°µã
-extern double omega_2;		 // ¼ÓËÙÒò×Ó¦Ø£¬ÓĞ°°µã
 extern int NST;              // Êä³ö´òÓ¡¿Õ¼äµçÎ»Ê±Íø¸ñµã¼ä¸ôÊı(Í¨ÓÃ)
 extern int INS;              // ÖáÉÏµçÎ»×öµÈ¾à²åÖµÊ±²½³¤Êı(Í¨ÓÃ)
 extern int* V1;              // ÒªÇóÉ¨ÃèµÈµçÎ»ÏßµÄµçÎ»¼ä¸ô»òÕßµçÎ»Öµ(Í¨ÓÃ)
 extern int tmp;				 // Êä³öµÈÎ»ÏßÒªÇó
 extern int count1;			 // µÈÎ»Ïß¼ÆÊıÆ÷
+
+//µü´ú±äÁ¿
+extern double omega_1;		 // ¼ÓËÙÒò×Ó¦Ø£¬ÎŞ°°µã
+extern double omega_2;		 // ¼ÓËÙÒò×Ó¦Ø£¬ÓĞ°°µã
 extern int iteration_times_1;  // µü´ú´ÎÊı£¬ÎŞ°°µã
 extern int iteration_times_2;  // µü´ú´ÎÊı
 extern bool round_p;
 extern int round_n;
 extern int times_n;
+
+//»æÖÆµÈÎ»Ïß±äÁ¿
+extern double z0, r0;			// Íø¸ñ×Ü³¤/¿í
+extern double* V_r, * V_z; //´æÉ¨Ãèµã×ø±ê
+extern double* zi, * ri;
+extern int count1;		     // µÈÎ»Ïß¼ÆÊıÆ÷
+extern int tmp;			  // Êä³öµÈÎ»ÏßÒªÇó
 
 struct Iteration_Process  //´æ´¢µü´ú¹ı³ÌµÄÁ´±í
 {

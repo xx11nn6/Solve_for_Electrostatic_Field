@@ -73,67 +73,6 @@ int readdata1(FILE* file)
     }
 
     fclose(file);
-
-    // 打印读取到的数据，可根据需要自行调整
-    printf("delta = %.1lf mm\n", delta);
-
-    printf("n = %d\n", n);
-
-    printf("Zi = ");
-    for (i = 0; i < n; i++)
-    {
-        printf("%.1lf ", dz[i]);
-    }
-    printf("mm\n");
-
-    printf("Ni = ");
-    for (i = 0; i < n; i++)
-    {
-        printf("%d ", _N[i]);
-    }
-    printf("\n");
-
-    printf("Vi = ");
-    for (i = 0; i < n; i++)
-    {
-        printf("%.1lfV ", V[i]);
-    }
-    printf("\n");
-
-    printf("VI = ");
-    for (i = 0; i < n; i++)
-    {
-        printf("%.1lfV ", VI[i]);
-    }
-    printf("\n");
-
-    printf("r1 = %.1lf mm\n", r1);
-
-    printf("M1 = %.d\n", M1);
-
-    printf("r2 = %.1lf mm\n", r2);
-
-    printf("M2 = %.d\n", M2);
-
-    printf("epsilon = %.7lf V\n", epsilon);
-
-    printf("NST = %d\n", NST);
-
-    printf("INS = %d\n", INS);
-
-    if (tmp == 3)
-    {
-        printf("等位线间隔：%d V\n", V1[0]);
-    }
-    else
-    {
-        printf("等位线间隔:");
-        for (i = 0; i < count1; i++)
-        {
-            printf(" %d", V1[i]);
-        }
-    }
-
     return 0;
 }
 
@@ -241,72 +180,6 @@ int readdata2(FILE* file)
     }
 
     fclose(file);
-
-    // 打印读取到的数据，可根据需要自行调整
-    printf("delta = %.1lf mm\n", delta);
-    printf("n = %d\n", n);
-    printf("Zi = ");
-    for (i = 0; i < n + 1; i++)
-    {
-        printf("%.1lf ", dz[i]);
-    }
-    printf("mm\n");
-
-    printf("Ni = ");
-    for (i = 0; i < n + 1; i++)
-    {
-        printf("%d ", _N[i]);
-    }
-    printf("\n");
-
-    printf("Vi = ");
-    for (i = 0; i < n; i++)
-    {
-        printf("%.1lf ", V[i]);
-    }
-    printf("V\n");
-
-    printf("Vi = ");
-    for (i = 0; i < n; i++)
-    {
-        printf("%.1lf ", VI[i]);
-    }
-    printf("V\n");
-
-
-    printf("r = ");
-    for (i = 0; i < n - 1; i++)
-    {
-        printf(" %.1lf", dr[i]);
-    }
-    printf("mm;\n");
-
-    printf("M = ");
-    for (i = 0; i < n - 1; i++)
-    {
-        printf(" %d", _M[i]);
-    }
-    printf(";\n");
-
-
-    printf("epsilon = %.7lf V\n", epsilon);
-
-    printf("NST = %d\n", NST);
-
-    printf("INS = %d\n", INS);
-
-    if (tmp == 3)
-    {
-        printf("等位线间隔：%d V\n", V1[0]);
-    }
-    else
-    {
-        printf("等位线间隔:");
-        for (i = 0; i < count1; i++)
-        {
-            printf(" %d", V1[i]);
-        }
-    }
     return 0;
 }
 
@@ -467,6 +340,8 @@ void writedata(FILE* file, Grid_Array** grid1, Grid_Array** grid2, Iteration_Pro
         }
     }
 
+
+
     //打印无鞍点网格
     fprintf(file, "\n\n无鞍点网格：\n");
     //打印迭代链表
@@ -484,21 +359,82 @@ void writedata(FILE* file, Grid_Array** grid1, Grid_Array** grid2, Iteration_Pro
         {
             p = p->next;
         }
-        
     }
 
+    //打印轴上电压
+    if (mode == 1)
+    {
+        double z_1, v_1, z_0, v_0;
+        double z_pace = z0 / INS;
+
+        z_0 = 0;
+        v_0 = 0;
+        fprintf(file, "\n无鞍点像管轴上点坐标与电位：\n");
+        fprintf(file, "坐标r             电位V\n");
+        fprintf(file, " %6.2lf     %11.7f \n", z_0, v_0);
+
+        for (i = 0; i < INS - 1; i++) {
+            z_1 = z_0 + z_pace;
+            for (int j = 0; j < (N - 1); j++) {
+                if ((zi[j] <= z_1) && (z_1 < zi[j + 1])) {
+                    v_1 = (z_1 - zi[j]) * (z_1 - zi[j + 1]) / (zi[j - 1] - zi[j]) / (zi[j - 1] - zi[j + 1]) * grid1[M - 1][j - 1].voltage\
+                        + (z_1 - zi[j - 1]) * (z_1 - zi[j + 1]) / (zi[j] - zi[j - 1]) / (zi[j] - zi[j + 1]) * grid1[M - 1][j].voltage\
+                        + (z_1 - zi[j - 1]) * (z_1 - zi[j]) / (zi[j + 1] - zi[j - 1]) / (zi[j + 1] - zi[j]) * grid1[M - 1][j + 1].voltage;
+                    fprintf(file, " %6.2lf     %11.7f \n", z_1, v_1);
+                    z_0 = z_1;
+                    v_0 = v_1;
+                }
+            }
+        }
+        fprintf(file, " %6.2lf     %11.7f \n", z0, grid1[0][N - 1].voltage);
+    }
+    else
+    {
+        double z_1, v_1;
+        double z_0 = 0;
+        for (i = 0; i < n + 1; i++) {
+            z_0 = z_0 + dz[i];
+        }
+        double z_pace = z_0 / INS;
+        double z_2 = 0;
+        double v_2 = 0;
+
+        fprintf(file, "\n无鞍点像管轴上点坐标与电位：\n");
+        fprintf(file, "坐标r             电位V\n");
+        fprintf(file, " %6.2lf     %11.7f \n", z_pace, v_2);
+
+        for (i = 0; i < INS - 1; i++) {
+            z_1 = z_2 + z_pace;
+            for (int j = 0; j < (N - 1); j++) {
+                if ((zi[j] <= z_1) && (z_1 < zi[j + 1])) {
+                    v_1 = (z_1 - zi[j]) * (z_1 - zi[j + 1]) / (zi[j - 1] - zi[j]) / (zi[j - 1] - zi[j + 1]) * grid1[M - 1][j - 1].voltage\
+                        + (z_1 - zi[j - 1]) * (z_1 - zi[j + 1]) / (zi[j] - zi[j - 1]) / (zi[j] - zi[j + 1]) * grid1[M - 1][j].voltage\
+                        + (z_1 - zi[j - 1]) * (z_1 - zi[j]) / (zi[j + 1] - zi[j - 1]) / (zi[j + 1] - zi[j]) * grid1[M - 1][j + 1].voltage;
+                    fprintf(file, " %6.2lf     %11.7f \n", z_1, v_1);
+                    z_2 = z_1;
+                    v_2 = v_1;
+                }
+            }
+        }
+        fprintf(file, " %6.2lf     %11.7f \n", z_0, grid1[0][N - 1].voltage);
+        //cout << z_0 << "电压" << 100 << endl;
+    }
+    
 
     //打印网格电位
-    fprintf(file, "\n网格电位：\n");
-    for (int i = 0; i < M; i++)
+    fprintf(file, "\n无鞍点网格电位：\n");
+    for (int i = 0; i < M; i += NST)
     {
-        for (int j = 0; j < N; j++)
+        for (int j = 0; j < N; j += NST)
         {
             fprintf(file, "%11.7f ", grid1[i][j].voltage); 
         }
         fprintf(file,"\n");
     }
-            
+       
+
+
+
     //打印有鞍点网格
     fprintf(file, "\n\n有鞍点网格：\n");
     //打印迭代链表
@@ -519,14 +455,69 @@ void writedata(FILE* file, Grid_Array** grid1, Grid_Array** grid2, Iteration_Pro
 
     }
 
-
-    //打印网格电位
-    fprintf(file, "\n网格电位：\n");
-    for (int i = 0; i < M; i++)
+    //打印轴上电压
+    if (mode == 1)
     {
-        for (int j = 0; j < N; j++)
+        double z_1, v_1, z_0, v_0;
+        double z_pace = z0 / INS;
+
+        z_0 = 0;
+        v_0 = 0;
+        fprintf(file, "\n无鞍点像管轴上点坐标与电位：\n");
+        fprintf(file, "坐标r             电位V\n");
+        fprintf(file, " %6.2lf     %11.7f \n", z_0, v_0);
+
+        for (i = 0; i < INS - 1; i++) {
+            z_1 = z_0 + z_pace;
+            for (int j = 0; j < (N - 1); j++) {
+                if ((zi[j] <= z_1) && (z_1 < zi[j + 1])) {
+                    v_1 = (z_1 - zi[j]) * (z_1 - zi[j + 1]) / (zi[j - 1] - zi[j]) / (zi[j - 1] - zi[j + 1]) * grid2[M - 1][j - 1].voltage\
+                        + (z_1 - zi[j - 1]) * (z_1 - zi[j + 1]) / (zi[j] - zi[j - 1]) / (zi[j] - zi[j + 1]) * grid2[M - 1][j].voltage\
+                        + (z_1 - zi[j - 1]) * (z_1 - zi[j]) / (zi[j + 1] - zi[j - 1]) / (zi[j + 1] - zi[j]) * grid2[M - 1][j + 1].voltage;
+                    fprintf(file, " %6.2lf     %11.7f \n", z_1, v_1);
+                    z_0 = z_1;
+                    v_0 = v_1;
+                }
+            }
+        }
+        fprintf(file, " %6.2lf     %11.7f \n", z0, grid2[0][N - 1].voltage);
+    }
+    else
+    {
+        double z_1, v_1;
+        double z_0 = 0;
+        for (i = 0; i < n + 1; i++) {
+            z_0 = z_0 + dz[i];
+        }
+        double z_pace = z_0 / INS;
+        double z_2 = 0;
+        double v_2 = 0;
+
+        fprintf(file, "\n无鞍点像管轴上点坐标与电位：\n");
+        fprintf(file, "坐标r             电位V\n");
+        fprintf(file, " %6.2lf     %11.7f \n", z_pace, v_2);
+
+        for (i = 0; i < INS - 1; i++) {
+            z_1 = z_2 + z_pace;
+            for (int j = 0; j < (N - 1); j++) {
+                if ((zi[j] <= z_1) && (z_1 < zi[j + 1])) {
+                    v_1 = (z_1 - zi[j]) * (z_1 - zi[j + 1]) / (zi[j - 1] - zi[j]) / (zi[j - 1] - zi[j + 1]) * grid2[M - 1][j - 1].voltage\
+                        + (z_1 - zi[j - 1]) * (z_1 - zi[j + 1]) / (zi[j] - zi[j - 1]) / (zi[j] - zi[j + 1]) * grid2[M - 1][j].voltage\
+                        + (z_1 - zi[j - 1]) * (z_1 - zi[j]) / (zi[j + 1] - zi[j - 1]) / (zi[j + 1] - zi[j]) * grid2[M - 1][j + 1].voltage;
+                    fprintf(file, " %6.2lf     %11.7f \n", z_1, v_1);
+                    z_2 = z_1;
+                    v_2 = v_1;
+                }
+            }
+        }
+    }
+    //打印网格电位
+    fprintf(file, "\n有鞍点网格电位：\n");
+    for (int i = 0; i < M; i += NST)
+    {
+        for (int j = 0; j < N; j += NST)
         {
-            fprintf(file, "%11.7f ", grid1[i][j].voltage);
+            fprintf(file, "%11.7f ", grid2[i][j].voltage);
         }
         fprintf(file, "\n");
     }

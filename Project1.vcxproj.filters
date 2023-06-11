@@ -32,5 +32,8 @@
     <ClInclude Include="File_Operation.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="Paint_Equipotential_Line.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
