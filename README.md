@@ -5,33 +5,33 @@
 #### 软件架构
 软件架构说明
 1.  main.cpp
-        - Grid_Array.h
-                - struct Grid_Array          创建结构电场网格
-                - struct Iteration_Process   创建迭代链表
-                - global_variables           声明全局变量
-        - Grid_Initialize.h
-                - void grid_initialize_mode_1  用于网格的初始化
-                - void grid_initialize_mode_2
-        - Iteration.h
-                - double residual                  计算迭代残差
-                - double convergence_criteria      计算迭代精度
-                - void SOR                       一次SOR迭代
-                - double select_accelerator_factor 选择加速因子
-        - File_Operation.h
-                - void readdata1  读取数据
-                - void readdata2
-                - void writedata    写数据
-                - void scan_all_1   扫描电位及坐标输出
-                - void scan_all_2
-                - int rescan_1      扫描一次
-                - int rescan_2    
-        - Paint_Equipotential_Line.h
-                - void paint_all_1  绘制等位线
-                - void paint_all_2     
-                - void scan_1       扫描等电位点
-                - void scan_2     
-                - void paint_1      绘制一条等位线
-                - void paint_2
+    - Grid_Array.h
+        - struct Grid_Array          创建结构电场网格
+        - struct Iteration_Process   创建迭代链表
+        - global_variables           声明全局变量
+    - Grid_Initialize.h
+        - void grid_initialize_mode_1  用于网格的初始化
+        - void grid_initialize_mode_2
+    - Iteration.h
+        - double residual                  计算迭代残差
+        - double convergence_criteria      计算迭代精度
+        - void SOR                       一次SOR迭代
+        - double select_accelerator_factor 选择加速因子
+    - File_Operation.h
+        - void readdata1  读取数据
+        - void readdata2
+        - void writedata    写数据
+        - void scan_all_1   扫描电位及坐标输出
+        - void scan_all_2
+        - int rescan_1      扫描一次
+        - int rescan_2    
+    - Paint_Equipotential_Line.h
+        - void paint_all_1  绘制等位线
+        - void paint_all_2     
+        - void scan_1       扫描等电位点
+        - void scan_2     
+        - void paint_1      绘制一条等位线
+        - void paint_2
                                     
 #### 安装教程
 
