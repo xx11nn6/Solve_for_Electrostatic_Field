@@ -5,11 +5,11 @@
 #include <iomanip>
 #include <graphics.h>		// 引用 EasyX 图形库
 #include <conio.h>
-#include "Grid_Array.h"			//定义网格，全局变量M、N和释放网格内存函数
-#include "Grid_Initialize.h"	//用于初始化两类像管
-#include "Iteration.h"			//包括SOR迭代，加速因子计算，残差计算和迭代精度判断函数
-#include "File_Operation.h"		//包括文件的读写
-#include "Paint_Equipotential_Line.h"
+#include "Grid_Array.h"				   //定义网格，全局变量M、N和释放网格内存函数
+#include "Grid_Initialize.h"	       //用于初始化两类像管
+#include "Iteration.h"				   //包括SOR迭代，加速因子计算，残差计算和迭代精度判断函数
+#include "File_Operation.h"			   //包括文件的读写
+#include "Paint_Equipotential_Line.h"  //包括等位线绘制
 using namespace std;
 
 //定义全局变量
@@ -17,8 +17,8 @@ using namespace std;
 int mode;			 //工作模式1为一类，2为二类
 int M;			  	 //网格数MN
 int N;
-double delta;		 // 电极厚度
-int n;				 // 电极数（包含荧光屏，不包含阴极）
+double delta;		  // 电极厚度
+int n;				  // 电极数（包含荧光屏，不包含阴极）
 double* dz;           // 每个电极的轴向间距，两类像管均用到此变量
 int* _N;              // 相邻电极间划分步长(通用)
 double* V;            // 各个电极电压
@@ -60,14 +60,13 @@ int main()
 {
 	//读文件捏
 	count1 = 0;
-	if ((err = fopen_s(&handle_read, "test6.txt", "rt")) != 0)
+	if ((err = fopen_s(&handle_read, "输入2.dat", "rt")) != 0)
 	{
 		printf("找不到文件！错误码：%d\n", err);
 		return -1;
 	}
 
-
-	fopen_s(&handle_read, "test6.txt", "rt");
+	fopen_s(&handle_read, "输入2.dat", "rt");
 	if (fscanf_s(handle_read, "%d\n", &mode) == 1 && mode == 2)
 	{
 		readdata2(handle_read);
@@ -80,7 +79,7 @@ int main()
 	}
 
 
-	double V_s = V[n - 1];  //定义荧光屏电压
+	double V_s = V[n - 1];  //荧光屏电压
 	//计算M和N
 	if (mode == 1)
 	{
@@ -108,7 +107,7 @@ int main()
 	//创建网格grid
 	//new用于动态分配内存
 	//例如：int* p = new int[10];
-	//这句话表示分配10个int类型的空间，返回首地址存储在p中
+	//表示分配10个int类型的空间，返回首地址存储在p中
 	//因此可以用来创建一个可变大小的数组
 	//要想创建二维数组，则必须使用双重指针
 
@@ -149,7 +148,6 @@ int main()
 	}
 
 	//创建无鞍点网格迭代过程链表
-	
 	iteration_times_1 = 0;
 	Iteration_Process* ite1 = new Iteration_Process();
 	ite1->next = nullptr;
@@ -203,12 +201,12 @@ int main()
 	}
 	
 	
-
+	/*在控制台输出
 	cout << "accelerator factor omega:" << endl;  //输出加速因子
 	cout << omega_1 << endl;
 	cout << "iteration times:" << endl;  //输出迭代次数
 	cout << iteration_times_1 << endl;
-	//*/
+	
 	//输出网格电位
 	cout << "grid:" << endl;
 	for (int i = 0; i < M; i++)
@@ -216,25 +214,24 @@ int main()
 		for (int j = 0; j < N; j++)
 		{
 			;
-			//cout << " " << setw(4)<< setfill(' ')  << setprecision(4) << grid[i][j].r << " ";  //setfill等函数是iomanip库中的函数，用于控制输出格式
-			//cout << "(" << setprecision(2) << grid[i][j].h3 << "," << setprecision(2) << grid[i][j].h4 << ") ";
+			cout << " " << setw(4)<< setfill(' ')  << setprecision(4) << grid[i][j].r << " ";  //setfill等函数是iomanip库中的函数，用于控制输出格式
+			cout << "(" << setprecision(2) << grid[i][j].h3 << "," << setprecision(2) << grid[i][j].h4 << ") ";
 		}
-		//cout << endl;
+		cout << endl;
 	}
-
+	*/
 
 	//写文件，输出
-	if ((err = fopen_s(&handle_write, "输出.res", "w")) != 0)
+	if ((err = fopen_s(&handle_write, "输出2.res", "w")) != 0)
 	{
 		printf("找不到文件！错误码：%d\n", err);
 		return -1;
 	}
-
 	writedata(handle_write, grid1, grid2, head1, head2);
 	fclose(handle_write);
 
 
-
+	//释放内存
 	free(dz);
 	free(_N);
 	free(V);
@@ -242,7 +239,15 @@ int main()
 	free(dr);
 	free(_M);
 	free(V1);
-	free_grid(grid1);//运行结束，释放内存
-	free_grid(grid2);//运行结束，释放内存
+	free(zi);
+	free(ri);
+	free(V_r);
+	free(V_z);
+	free(head1);
+	free(head2);
+	free(ite1);
+	free(ite2);
+	free_grid(grid1);  //释放网格
+	free_grid(grid2);
 	return 0;
 }

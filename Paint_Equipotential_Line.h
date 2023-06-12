@@ -1,5 +1,5 @@
 #define PAINT_EQUIPOTENTIAL_LINE_H
-//用于绘制等位线
+//用于绘制等位线，这部分由李煜翔负责
 #include "Grid_Array.h"
 #include <graphics.h>
 #include <iostream>
@@ -72,15 +72,11 @@ void paint_all_1(int n, int M1, int M2, int M, int N, Grid_Array** grid, double 
 		}
 	}
 	else {
-
 		for (i = 0; i < count1; i++) {
 			setcolor(RGB(rand() * 255, rand() * 255, rand() * 255));
 			k = scan_1(V1[i], grid);//输入要扫描的电位，进行指定电位的扫描，返回k为扫描点总数
 			paint_1(k, grid, r0);
 		}
-
-
-
 	}
 	system("pause");
 	closegraph();

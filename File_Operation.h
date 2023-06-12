@@ -1,10 +1,13 @@
-#define FILE_OPERATION_H  //包括文件的读写
+#define FILE_OPERATION_H  //包括文件的读写，读文件由葛军韬负责，写文件由魏千怀负责，扫描点电压和坐标由李煜翔负责
 #include "Grid_Array.h"
 #include <stdio.h>
 #include <stdlib.h>
 
 
-
+int rescan_1(int V, Grid_Array** grid);
+void scan_all_1(int n, int M1, int M2, int M, int N, Grid_Array** grid, double z0, double r0, double* dz, double delta, int tmp, int* V1, int count1, FILE* file);
+int rescan_2(int V, Grid_Array** grid, int n, double* dz, double* dr, double delta);
+void scan_all_2(int n, int M, int N, Grid_Array** grid, double* dz, double delta, int* _M, double* dr, int* _N, int tmp, int* V1, int count1, FILE* file);
 
 int readdata1(FILE* file)
 {
@@ -56,7 +59,7 @@ int readdata1(FILE* file)
     {
         V1 = new int();
         fscanf_s(file, "dengweixian:%d V\n", &V1[0]);
-    } 
+    }
     else
     {
         V1 = (int*)malloc((n + 10) * sizeof(int)); // 等位线
@@ -78,28 +81,6 @@ int readdata1(FILE* file)
 
 int readdata2(FILE* file)
 {
-
-#if 0
-    double a;        // 电极厚度
-    int n;           // 电极个数
-    double* z;       // 电极间距
-    int* N;          // 相邻电极间划分步长
-    double* V;       // 电极电位
-    double* VI;      //含鞍点电极电位
-    double* r;       // 电极内孔半径
-    //double r2;       // 从电极内孔径边沿到封闭边界处的径向距离
-    int* M;      // r1范围内等步长划分的网格数,从电极内孔径边沿到封闭边界处的径向距离
-    int NST;         // 输出打印空间电位时网格点间隔数
-    int INS;         // 轴上电位做等距插值时步长数
-    double e;        // 迭代精度
-    int m_V;         // 扫描电位个数
-    //double* V_scan;  // 制定扫描点位时暂存扫描电位
-    //int I,m = 0;    // m为格点列数，I为格点行数
-    double V1;       // 要求扫描等电位线的电位间隔
-
-    int i;
-    m_V = 0;
-#endif
     tmp = 0;
     //int count = 0;
     int i;
@@ -107,9 +88,9 @@ int readdata2(FILE* file)
 
     fscanf_s(file, "delta = %lf mm; n = %d;\n", &delta, &n); // 电极宽度
 
-    dz = (double*)malloc((n+1) * sizeof(double)); // 相邻电极间距离
+    dz = (double*)malloc((n + 1) * sizeof(double)); // 相邻电极间距离
     fscanf_s(file, "Zi =");
-    for (i = 0; i < n+1; i++)
+    for (i = 0; i < n + 1; i++)
     {
         fscanf_s(file, " %lf", &dz[i]);
     }
@@ -178,14 +159,13 @@ int readdata2(FILE* file)
             }
         }
     }
-
     fclose(file);
     return 0;
 }
 
 
 
-void writedata(FILE* file, Grid_Array** grid1, Grid_Array** grid2, Iteration_Process* head1,Iteration_Process* head2)
+void writedata(FILE* file, Grid_Array** grid1, Grid_Array** grid2, Iteration_Process* head1, Iteration_Process* head2)
 {
     //输出基本信息
     int i;
@@ -223,7 +203,7 @@ void writedata(FILE* file, Grid_Array** grid1, Grid_Array** grid2, Iteration_Pro
             fprintf(file, "%d ", _N[i]);
         }
     }
-    
+
     fprintf(file, "\n");
 
     fprintf(file, "电极电压Vi = ");
@@ -233,7 +213,7 @@ void writedata(FILE* file, Grid_Array** grid1, Grid_Array** grid2, Iteration_Pro
     }
     fprintf(file, "V\n");
 
-    fprintf(file,"含鞍点电压Vi = ");
+    fprintf(file, "含鞍点电压Vi = ");
     for (i = 0; i < n; i++)
     {
         fprintf(file, "%.1lf ", VI[i]);
@@ -253,7 +233,7 @@ void writedata(FILE* file, Grid_Array** grid1, Grid_Array** grid2, Iteration_Pro
     {
         fprintf(file, "垂直间距r1 = %lf mm, r2 = %lf mm\n", r1, r2);
     }
-    
+
 
     if (mode == 2)
     {
@@ -268,8 +248,6 @@ void writedata(FILE* file, Grid_Array** grid1, Grid_Array** grid2, Iteration_Pro
     {
         fprintf(file, "径向划分要求M1 = %d, M2 = %d\n", M1, M2);
     }
-    
-
 
     fprintf(file, "迭代精度ε = %.7lf V\n", epsilon);
 
@@ -302,7 +280,7 @@ void writedata(FILE* file, Grid_Array** grid1, Grid_Array** grid2, Iteration_Pro
         {
             z[1] = grid1[M - 1][2].h1;
         }
-        z[i] = z[i - 1] + grid1[M-1][i - 1].h2;
+        z[i] = z[i - 1] + grid1[M - 1][i - 1].h2;
     }
 
     fprintf(file, "网格点坐标：\n         轴向坐标 ");
@@ -326,7 +304,7 @@ void writedata(FILE* file, Grid_Array** grid1, Grid_Array** grid2, Iteration_Pro
                         }
                         grid1[0][M - 1].r = grid1[1][M - 1].r + delta;
                     }
-                    fprintf(file, "%6.2lf            ", grid1[i][M-1].r);
+                    fprintf(file, "%6.2lf            ", grid1[i][M - 1].r);
                 }
                 else if (j != N)
                 {
@@ -341,7 +319,6 @@ void writedata(FILE* file, Grid_Array** grid1, Grid_Array** grid2, Iteration_Pro
     }
 
 
-
     //打印无鞍点网格
     fprintf(file, "\n\n无鞍点网格：\n");
     //打印迭代链表
@@ -354,7 +331,7 @@ void writedata(FILE* file, Grid_Array** grid1, Grid_Array** grid2, Iteration_Pro
     p = p->next;
     for (i = 0; i < iteration_times_1; i++)
     {
-        fprintf(file, "%2d轮%2d次             %.7lf         %.7lf         %.7lf\n", p->round,p->times, p->omega_r, p->max_res, p->avg_res);
+        fprintf(file, "%2d轮%2d次             %.7lf         %.7lf         %.7lf\n", p->round, p->times, p->omega_r, p->max_res, p->avg_res);
         if (p->next != NULL)
         {
             p = p->next;
@@ -419,7 +396,7 @@ void writedata(FILE* file, Grid_Array** grid1, Grid_Array** grid2, Iteration_Pro
         fprintf(file, " %6.2lf     %11.7f \n", z_0, grid1[0][N - 1].voltage);
         //cout << z_0 << "电压" << 100 << endl;
     }
-    
+
 
     //打印网格电位
     fprintf(file, "\n无鞍点网格电位：\n");
@@ -427,11 +404,11 @@ void writedata(FILE* file, Grid_Array** grid1, Grid_Array** grid2, Iteration_Pro
     {
         for (int j = 0; j < N; j += NST)
         {
-            fprintf(file, "%11.7f ", grid1[i][j].voltage); 
+            fprintf(file, "%11.7f ", grid1[i][j].voltage);
         }
-        fprintf(file,"\n");
+        fprintf(file, "\n");
     }
-       
+
 
 
 
@@ -450,7 +427,7 @@ void writedata(FILE* file, Grid_Array** grid1, Grid_Array** grid2, Iteration_Pro
         fprintf(file, "%2d轮%2d次             %.7lf         %.7lf         %.7lf\n", q->round, q->times, q->omega_r, q->max_res, q->avg_res);
         if (q->next != NULL)
         {
-             q = q->next;
+            q = q->next;
         }
 
     }
@@ -519,6 +496,283 @@ void writedata(FILE* file, Grid_Array** grid1, Grid_Array** grid2, Iteration_Pro
         {
             fprintf(file, "%11.7f ", grid2[i][j].voltage);
         }
-        fprintf(file, "\n");
+        fprintf(file, "\n\n");
+    }
+
+
+    //打印扫描点电压及坐标
+    if (mode == 1)
+    {
+        fprintf(file, "扫描点电压及坐标:\n");
+        fprintf(file, "无鞍点时:\n");
+        scan_all_1(n, M1, M2, M, N, grid1, z0, r0, dz, delta, tmp, V1, count1, file);
+        fprintf(file, "\n有鞍点时:\n");
+        scan_all_1(n, M1, M2, M, N, grid2, z0, r0, dz, delta, tmp, V1, count1, file);
+    }
+    else
+    {
+        fprintf(file, "扫描点电压及坐标:\n");
+        fprintf(file, "无鞍点时:\n");
+        scan_all_2(n, M, N, grid1, dz, delta, _M, dr, _N, tmp, V1, count1, file);
+        fprintf(file, "\n有鞍点时:\n");
+        scan_all_2(n, M, M, grid2, dz, delta, _M, dr, _N, tmp, V1, count1, file);
+    }
+
+}
+
+
+
+// 扫描电压
+void scan_all_1(int n, int M1, int M2, int M, int N, Grid_Array** grid, double z0, double r0, double* dz, double delta, int tmp, int* V1, int count1, FILE* file)//画电位线,
+{
+    int i, j, k, num;
+    double z_1, v_1, z_0, v_0, V_temp1, V_temp2, t;
+    V_z = (double*)malloc(n * (M1 + M2) * sizeof(double));//存扫描电Z坐标
+    V_r = (double*)malloc(n * (M1 + M2) * sizeof(double));//存扫描电R坐标
+    zi = (double*)malloc(N * sizeof(double));//存每列到r轴距离
+    ri = (double*)malloc(M * sizeof(double));//存每行径向距离
+    zi[0] = 0;
+    for (i = 1; i < N; i++)//计算z1
+    {
+        zi[i] = zi[i - 1] + grid[0][i - 1].h2;
+    }
+    for (i = 0; i < M; i++)//计算
+    {
+        ri[i] = grid[i][0].r;
+    }
+
+    for (i = 0; i < n * (M1 + M2); i++)//将所有扫描点的坐标初始化为0
+    {
+        V_z[i] = 0;
+        V_r[i] = 0;
+    }
+
+    if (tmp == 3) {
+        for (double sss = 0; sss < 100; sss += V1[0]) {
+            k = rescan_1(sss, grid);//输入要扫描的电位，进行指定电位的扫描，返回k为扫描点总数
+            for (int j = 0; j < k; j++)
+            {
+                fprintf(file, "扫描点电压：%d V     扫描点坐标：z= %f    r=%f \n", sss, V_z[j] / 10, V_r[j] / 10);
+            }
+        }
+    }
+    else {
+        for (i = 0; i < count1; i++) {
+            k = rescan_1(V1[i], grid);//输入要扫描的电位，进行指定电位的扫描，返回k为扫描点总）
+            for (int j = 0; j < k; j++)
+            {
+                fprintf(file, "扫描点电压：%d V     扫描点坐标：z= %f    r=%f \n", V1[i], V_z[j] / 10, V_r[j] / 10);
+            }
+        }
     }
 }
+
+int rescan_1(int V, Grid_Array** grid)//扫描//
+{
+    int i, j, k = 0;
+    double r, z;
+    for (i = 0; i < M; i++) //行扫描
+    {
+        for (j = 0; j < N - 1; j++)
+        {
+
+            if (grid[i][j].voltage == V) {//若点电位与扫描电位相等，将该点的坐标保存，10为图像的放大倍数
+                V_z[k] = 10 * zi[j];
+                V_r[k] = 10 * ri[i];
+                k++;
+            }
+            if ((grid[i][j].voltage <= V && grid[i][j + 1].voltage > V) || (grid[i][j].voltage >= V && grid[i][j + 1].voltage < V) || (grid[i][j].voltage > V && grid[i][j + 1].voltage <= V)\
+                || (grid[i][j].voltage < V && grid[i][j + 1].voltage >= V))//若扫描点与后一点的电位不相等，则进行插值
+            {
+                z = (V - grid[i][j].voltage) / (grid[i][j + 1].voltage - grid[i][j].voltage) * (zi[j + 1] - zi[j]) + zi[j];//线性插值
+                V_z[k] = 10 * z;
+                V_r[k] = 10 * ri[i];
+                k++;
+            }
+        }
+    }
+    for (j = 0; j < N; j++)//列扫描，具体步骤同上
+    {
+        for (i = 0; i < M - 1; i++)
+        {
+            if (grid[i][j].voltage == V) {//若点电位与扫描电位相等，将该点的坐标保存，10为图像的放大倍数
+                V_z[k] = 10 * zi[j];
+                V_r[k] = 10 * ri[i];
+                k++;
+            }
+            if ((grid[i][j].voltage <= V && grid[i + 1][j].voltage > V) || (grid[i][j].voltage >= V && grid[i + 1][j].voltage < V) || (grid[i][j].voltage > V && grid[i + 1][j].voltage <= V)\
+                || (grid[i][j].voltage < V && grid[i + 1][j].voltage >= V))//若扫描点与后一点的电位不相等，则进行插值
+            {
+
+
+                r = (V - grid[i][j].voltage) / (grid[i + 1][j].voltage - grid[i][j].voltage) * (ri[i + 1] - ri[i]) + ri[i];//线性插值
+                V_z[k] = 10 * zi[j];
+                V_r[k] = 10 * r;
+                k++;
+
+            }
+        }
+    }
+    return k;
+}
+void scan_all_2(int n, int M, int N, Grid_Array** grid, double* dz, double delta, int* _M, double* dr, int* _N, int tmp, int* V1, int count1, FILE* file)//画电位线,
+{
+    int i, j, k, num;
+    double z_temp1, z_temp2, V_temp1, V_temp2, r_0, z_0, t, s, v_2, z_2, z_1, v_1;
+    V_z = (double*)malloc(n * (M) * sizeof(double));//存扫描电Z坐标
+    V_r = (double*)malloc(n * (M) * sizeof(double));//存扫描电R坐标
+    zi = (double*)malloc(N * sizeof(double));//存每列到r轴距离
+    ri = (double*)malloc(M * sizeof(double));//存每行径向距离
+    zi[0] = 0;
+    grid[M - 1][0].h2 = dz[0] / _N[0];
+    for (i = 1; i < N; i++)//计算z1
+    {
+        zi[i] = zi[i - 1] + grid[M - 1][i - 1].h2;
+    }
+    for (i = 0; i < M; i++)//计算r1
+    {
+        ri[i] = grid[i][N - 2].r;
+    }
+    for (i = 0; i < n * (M); i++)//将所有扫描点的坐标初始化为0
+    {
+        V_z[i] = 0;
+        V_r[i] = 0;
+    }
+    r_0 = 0;
+    for (i = 0; i < n - 1; i++) {
+        r_0 = r_0 + dr[i] + delta;
+    }
+    z_0 = 0;
+    for (i = 0; i < n + 1; i++) {
+        z_0 = z_0 + dz[i];
+    }
+
+    if (tmp == 3) {
+        for (i = V1[0]; i < 100; i = i + V1[0]) {
+
+            k = rescan_2(i, grid, n, dz, dr, delta);//输入要扫描的电位，进行指定电位的扫描，返回k为扫描点总数
+            for (int j = 0; j < k; j++)
+            {
+                fprintf(file, "扫描点电压：%d V     扫描点坐标：z= %f    r=%f \n", i, V_z[j] / 6, V_r[j] / 6);
+            }
+
+        }
+    }
+    else {
+
+        for (i = 0; i < count1; i++) {
+
+            k = rescan_2(V1[i], grid, n, dz, dr, delta);//输入要扫描的电位，进行指定电位的扫描，返回k为扫描点总数
+            for (int j = 0; j < k; j++)
+            {
+                fprintf(file, "扫描点电压：%d V     扫描点坐标：z= %f    r=%f \n", i, V_z[j] / 6, V_r[j] / 6);
+            }
+        }
+    }
+    system("pause");
+    closegraph();
+
+
+
+}
+int rescan_2(int V, Grid_Array** grid, int n, double* dz, double* dr, double delta)//扫描//
+{
+    int i, j, k = 0;
+    int p, q;
+    double r, z, t, s;
+
+    for (i = 0; i < M; i++) //行扫描
+    {
+        for (j = 0; j < N - 1; j++)
+        {
+            if (grid[i][j].voltage == V) {//若点电位与扫描电位相等，将该点的坐标保存，10为图像的放大倍数
+                V_z[k] = zi[j];
+                V_r[k] = ri[i];
+                k++;
+
+            }
+            if ((grid[i][j].voltage <= V && grid[i][j + 1].voltage > V) || (grid[i][j].voltage >= V && grid[i][j + 1].voltage < V) || (grid[i][j].voltage > V && grid[i][j + 1].voltage <= V)\
+                || (grid[i][j].voltage < V && grid[i][j + 1].voltage >= V))//若扫描点与后一点的电位不相等，则进行插值
+            {
+                z = (V - grid[i][j].voltage) / (grid[i][j + 1].voltage - grid[i][j].voltage) * (zi[j + 1] - zi[j]) + zi[j];//线性插值
+                V_z[k] = z;
+                V_r[k] = ri[i];
+                k++;
+
+            }
+        }
+    }
+    for (j = 0; j < N; j++)//列扫描，具体步骤同上
+    {
+        for (i = 0; i < M - 1; i++)
+        {
+            if (grid[i][j].voltage == V) {//若点电位与扫描电位相等，将该点的坐标保存，10为图像的放大倍数
+                V_z[k] = zi[j];
+                V_r[k] = ri[i];
+                k++;
+            }
+            if ((grid[i][j].voltage <= V && grid[i + 1][j].voltage > V) || (grid[i][j].voltage >= V && grid[i + 1][j].voltage < V) || (grid[i][j].voltage > V && grid[i + 1][j].voltage <= V)\
+                || (grid[i][j].voltage < V && grid[i + 1][j].voltage >= V))//若扫描点与后一点的电位不相等，则进行插值
+            {
+                r = (V - grid[i][j].voltage) / (grid[i + 1][j].voltage - grid[i][j].voltage) * (ri[i + 1] - ri[i]) + ri[i];//线性插值
+                V_z[k] = zi[j];
+                V_r[k] = r;
+
+                k++;
+            }
+        }
+    }
+    q = 0;
+    for (i = 0; i < k; i++) {
+
+        t = 0;
+        s = 0;
+        for (p = 0; p < n + 1; p++) {
+
+            if (p == 0) {
+                if ((V_z[i] <= dz[0]) && (V_r[i] <= dr[0]))
+                {
+                    V_z[q] = 8 * V_z[i];
+                    V_r[q] = 8 * V_r[i];
+                    q++;
+                }
+                t = t + dz[0];
+            }
+            else if (p == 1) {
+                if ((V_z[i] <= (t + dz[p])) && (V_r[i] <= dr[0]) && (V_z[i] > t))
+                {
+                    V_z[q] = 8 * V_z[i];
+                    V_r[q] = 8 * V_r[i];
+                    q++;
+                }
+                t = t + dz[p];
+                s = s + dr[p - 1] + delta;
+            }
+
+            else if (p == n) {
+                if ((V_z[i] <= (t + dz[p] + 1)) && (V_r[i] <= s) && (V_z[i] > t))
+                {
+                    V_z[q] = 8 * V_z[i];
+                    V_r[q] = 8 * V_r[i];
+                    q++;
+                }
+            }
+
+            else {
+                if ((V_z[i] <= ((t + dz[p]))) && (V_r[i] <= ((s + dr[p - 1]))) && (V_z[i] > (t)))
+                {
+                    V_z[q] = 8 * V_z[i];
+                    V_r[q] = 8 * V_r[i];
+                    q++;
+
+                }
+                t = t + dz[p];
+                s = s + dr[p - 1] + delta;
+            }
+        }
+    }
+
+    k = q;
+    return k;//返回所扫描到的坐标个数
+}
+

@@ -2,9 +2,6 @@
 #include "Grid_Array.h"
 #include <numeric>
 
-//判断变量
-
-
 //计算残差的均值
 double residual(Grid_Array** grid)
 {
@@ -57,7 +54,6 @@ void SOR(Grid_Array** grid, double omega, Iteration_Process*& ite, int* iterate_
 		{
 			if (grid[i][j].is_margin == false && grid[i][j].is_inside == true)//判断是否是边界及是否在边界内部，不是边界并且在内部则参与迭代
 			{
-
 				double c1, c2, c3, c4, c0;
 				//为了公式好看，先用变量暂存
 				double phi = grid[i][j].voltage;  //迭代前的电压φ[k]
@@ -104,7 +100,6 @@ void SOR(Grid_Array** grid, double omega, Iteration_Process*& ite, int* iterate_
 			}
 		}
 	}
-
 
 	//迭代后再设置链表
 	ite->next = new Iteration_Process();
@@ -169,6 +164,3 @@ double select_accelerator_factor(Grid_Array** grid, Iteration_Process*& ite,int*
 	} while (abs((omega_m_bar - omega_m) / (2 - omega_m)) >= 0.05);
 	return omega;
 }
-
-
-
