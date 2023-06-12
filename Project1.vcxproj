@@ -136,6 +136,11 @@
     <ClInclude Include="Iteration.h" />
     <ClInclude Include="Paint_Equipotential_Line.h" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="一类像管.png" />
+    <Image Include="二类像管.png" />
+    <Image Include="输入变量及格式要求.png" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

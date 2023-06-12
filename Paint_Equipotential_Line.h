@@ -6,14 +6,12 @@
 using namespace std;
 
 
-void potential_line(Grid_Array** grid, int n, int* _N, int M1, int M2);
 void paint_1(int k, Grid_Array** grid, double r0);
 int scan_1(double V, Grid_Array** grid);
 void paint_all_1(int n, int M1, int M2, int M, int N, Grid_Array** grid, double z0, double r0, double* dz, double delta, int tmp, int* V1, int count1);
 void paint_2(int k, Grid_Array** grid, int* _N, int* _M, double* dz, double* dr);
 int scan_2(int V, Grid_Array** grid, int n, double* dz, double* dr, double delta);
 void paint_all_2(int n, int M, int N, Grid_Array** grid, double* dz, double delta, int* _M, double* dr, int* _N, int tmp, int* V1, int count1);
-void axis_voltage(double z_sum, double* z, int INS);
 
 void paint_all_1(int n, int M1, int M2, int M, int N, Grid_Array** grid, double z0, double r0, double* dz, double delta, int tmp, int* V1, int count1)//»­µçÎ»Ïß,
 {
