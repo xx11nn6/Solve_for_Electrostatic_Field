@@ -52,7 +52,7 @@
 1.  魏千怀-负责 main.cpp , Grid_Array.h , Grid_Initialize.h , Iteration.h 和 File_Operation.h 的 writedata 函数
 2.  李煜翔-负责 Paint_Equipotential_Line.h 和 File_Operation.h 的 scan_all, rescan 函数
 3.  葛军韬-负责 File_Operation.h 函数
-4.  xx11nn6-fork
+4.  xx11nn6-fork 负责可爱捏 ^^ 联系方式xx11nn6@126.com
 
 
 #### 结语
